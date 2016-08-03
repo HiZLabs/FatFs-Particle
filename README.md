@@ -47,7 +47,7 @@ The drive is attached using the drive number you supply. In the example code, th
 | ------------- | -------------------- |
 | `FRESULT FatFs::attach(FatFsDriver& driver, BYTE driveNumber)` | attach a driver to a drive number |
 |`void FatFs::detach(BYTE driveNumber)`| detach a driver (does not close open files) |
-|`const char* FatFs::fileResultMessage(FRESULT fileResult) { return FR_string(fileResult)`| returns a user-readable status message for FRESULT error codes|
+|`const char* FatFs::fileResultMessage(FRESULT fileResult)`| returns a user-readable status message for FRESULT error codes|
 
 **Sharing the SPI bus** | The SD SPI driver included with FatFs-Particle uses a mutex (`os_mutex_t`) to mediate access to the SPI bus if the bus is shared. 
 
