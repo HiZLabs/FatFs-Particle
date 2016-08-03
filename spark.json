@@ -1,0 +1,7 @@
+{
+    "name": "FatFs-Particle",
+    "version": "0.0.1",
+    "author": "Aaron Heise <aaron@hizlabs.com>",
+    "license": "MIT",
+    "description": "FatFs library by ChaN, plus SD (SPI mode) driver for Particle devices"
+}
