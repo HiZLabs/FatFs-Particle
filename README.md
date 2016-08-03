@@ -41,7 +41,7 @@ After attaching the drive, you will use the FatFs API to use the drive. For refe
 
 The drive is attached using the drive number you supply. In the example code, the SD card is attached on drive number 0, so the file `\test.txt` on the SD card would be accessed at the path `0:/test.txt`.
 
-**`FatFs::` static functions** -- attaching and detaching drivers and interpresting error messages
+**`FatFs::` static functions** Attaching and detaching drivers and interpresting error messages
 
 | function      | description          |
 | ------------- | -------------------- |
@@ -54,9 +54,7 @@ The SD SPI driver included with FatFs-Particle uses a mutex (`os_mutex_t`) to me
 
 *TODO: example of shared SPI bus usage*
 
-**Custom Drivers**
-
-A driver for any storage device can be created by extending the abstract class `FatFsDriver`. This driver can then be attached using `FatFs::attach()`.
+**Custom Drivers** A driver for any storage device can be created by extending the abstract class `FatFsDriver`. This driver can then be attached using `FatFs::attach()`.
 
 ```
 class MyCustomFatFsDriver : public FatFsDriver {
