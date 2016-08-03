@@ -10,6 +10,7 @@
 #else
 
 #include "FatFs-Particle.h"
+#include "trampoline.h"
 
 //LOG_SOURCE_CATEGORY("fatfs_particle.sdspidriver")
 
@@ -77,25 +78,8 @@ private:
 
 	os_mutex_t _dmaSignal;
 
-	static std::function<void(void)> _dmaCallback[];
-	static void spi_callback() { _dmaCallback[0](); }
-	static void spi1_callback() { _dmaCallback[1](); }
-
-	static HAL_SPI_DMA_UserCallback spiCallback(SPIClass* spi, std::function<void()> callback)
-	{
-		if(spi == &SPI)
-		{
-			_dmaCallback[0] = callback;
-			return &spi_callback;
-		}
-		else if(spi == &SPI1)
-		{
-			_dmaCallback[1] = callback;
-			return &spi1_callback;
-		}
-		else return nullptr;
-	}
-
+	uint8_t* _buffer;
+	size_t _bufferSize;
 
 	void assertCS() { digitalWrite(_cs, LOW); }
 	void deassertCS() { digitalWrite(_cs, HIGH); }
@@ -111,9 +95,8 @@ private:
 		_spi->setBitOrder(MSBFIRST);
 	}
 
-	HAL_SPI_DMA_UserCallback startTransfer() {
+	void startTransfer() {
 		os_mutex_lock(_dmaSignal);
-		return spiCallback(_spi, [this](){this->transferComplete();});
 	}
 		void transferComplete() { os_mutex_unlock(_dmaSignal); };
 		void waitForTransfer() { os_mutex_lock(_dmaSignal); os_mutex_unlock(_dmaSignal); }
@@ -125,8 +108,23 @@ private:
 	)
 	{
 		/* Write multiple bytes */
-		_spi->transfer((void*)buff, nullptr, btx, startTransfer());
-		waitForTransfer();
+		startTransfer();
+
+		_buffer = (BYTE*)buff;
+		_bufferSize = btx;
+
+		auto invoke = [](void(*callback)(), void* arg) {
+			SDSPIDriver* self = (SDSPIDriver*)arg;
+			self->_spi->transfer(self->_buffer, nullptr, self->_bufferSize, callback);
+			self->waitForTransfer();
+		};
+
+		auto callback = [](void* arg){
+			SDSPIDriver* self = (SDSPIDriver*)arg;
+			self->transferComplete();
+		};
+
+		trampoline(invoke, this, callback, this);
 	}
 
 	void rcvr_spi_multi (
@@ -137,9 +135,23 @@ private:
 		/* Read multiple bytes, send 0xFF as dummy */
 		memset(buff, 0xff, btr);
 
+		startTransfer();
 
-		_spi->transfer(buff, buff, btr, startTransfer());
-		waitForTransfer();
+		_buffer = (BYTE*)buff;
+		_bufferSize = btr;
+
+		auto invoke = [](void(*callback)(), void* arg) {
+			SDSPIDriver* self = (SDSPIDriver*)arg;
+			self->_spi->transfer(self->_buffer, self->_buffer, self->_bufferSize, callback);
+			self->waitForTransfer();
+		};
+
+		auto callback = [](void* arg){
+			SDSPIDriver* self = (SDSPIDriver*)arg;
+			self->transferComplete();
+		};
+
+		trampoline(invoke, this, callback, this);
 	}
 
 	BYTE send_cmd (		/* Return value: R1 resp (bit7==1:Failed to send) */
@@ -618,9 +630,6 @@ public:
 		return wasBusy;
 	}
 };
-
-template<typename T>
-std::function<void(void)> SDSPIDriver<T>::_dmaCallback[2];
 
 #ifndef FATFS_PARTICLE_PINTYPE
 #define FATFS_PARTICLE_PINTYPE uint16_t
