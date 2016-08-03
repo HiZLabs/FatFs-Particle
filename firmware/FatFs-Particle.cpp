@@ -19,8 +19,11 @@
 
 #include "FatFs-Particle.h"
 
+LOG_SOURCE_CATEGORY("fatfs_particle.diskio");
+
 extern "C" DSTATUS disk_initialize(BYTE pdrv)
 {
+	LOG(TRACE, "initialize drive %d", pdrv);
 	if(FatFs::_drivers[pdrv] == nullptr)
 		return STA_NOINIT;
 	return FatFs::_drivers[pdrv]->initialize();
@@ -28,6 +31,7 @@ extern "C" DSTATUS disk_initialize(BYTE pdrv)
 
 extern "C" DSTATUS disk_status(BYTE pdrv)
 {
+//	LOG(TRACE, "status drive %d", pdrv);
 	if(FatFs::_drivers[pdrv] == nullptr)
 		return STA_NOINIT;
 	return FatFs::_drivers[pdrv]->status();
@@ -35,6 +39,7 @@ extern "C" DSTATUS disk_status(BYTE pdrv)
 
 extern "C" DRESULT disk_read(BYTE pdrv, BYTE* buff, DWORD sector, UINT count)
 {
+//	LOG(TRACE, "read drive %d", pdrv);
 	if(FatFs::_drivers[pdrv] == nullptr)
 		return RES_PARERR;
 	return FatFs::_drivers[pdrv]->read(buff, sector, count);
@@ -42,6 +47,7 @@ extern "C" DRESULT disk_read(BYTE pdrv, BYTE* buff, DWORD sector, UINT count)
 
 extern "C" DRESULT disk_write(BYTE pdrv, const BYTE* buff, DWORD sector, UINT count)
 {
+//	LOG(TRACE, "write drive %d", pdrv);
 	if(FatFs::_drivers[pdrv] == nullptr)
 		return RES_PARERR;
 	return FatFs::_drivers[pdrv]->write(buff, sector, count);
@@ -49,6 +55,7 @@ extern "C" DRESULT disk_write(BYTE pdrv, const BYTE* buff, DWORD sector, UINT co
 
 extern "C" DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void* buff)
 {
+//	LOG(TRACE, "ioctl drive %d, cmd %d", pdrv, cmd);
 	if(FatFs::_drivers[pdrv] == nullptr)
 		return RES_PARERR;
 	return FatFs::_drivers[pdrv]->ioctl(cmd, buff);
@@ -68,6 +75,7 @@ std::vector<FatFsDriver*> FatFs::_drivers;
 
 FRESULT FatFs::attach(FatFsDriver& driver, BYTE driveNumber)
 {
+	LOG(INFO, "attaching drive %d", driveNumber);
 	while(driveNumber >= _drivers.size())
 		_drivers.push_back(nullptr);
 

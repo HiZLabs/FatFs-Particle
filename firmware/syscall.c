@@ -7,6 +7,8 @@
 #include "ff.h"
 #include "hw_ticks.h"
 
+LOG_SOURCE_CATEGORY("fatfs_particle.syscall")
+
 
 #if _FS_REENTRANT
 /*------------------------------------------------------------------------*/
@@ -22,8 +24,9 @@ int ff_cre_syncobj (	/* !=0:Function succeeded, ==0:Could not create due to any 
 	_SYNC_t *sobj		/* Pointer to return the created sync object */
 )
 {
-
-	return os_mutex_create(sobj) != 0;
+	LOG(TRACE, "create FatFs mutex (drive %d)", vol);
+	os_mutex_create(sobj);
+	return sobj != NULL;
 }
 
 
@@ -40,6 +43,7 @@ int ff_del_syncobj (	/* !=0:Function succeeded, ==0:Could not delete due to any 
 	_SYNC_t sobj		/* Sync object tied to the logical drive to be deleted */
 )
 {
+	LOG(TRACE, "destroy FatFs mutex");
 	if(sobj != NULL)
 		os_mutex_destroy(sobj);
 	return 1;
@@ -55,6 +59,7 @@ static int pollWaitForLock(_SYNC_t sobj) {
 			return 1;
 		delay(1);
 	}
+	LOG(TRACE, "timeout waiting for FatFs lock");
 	return 0;
 }
 

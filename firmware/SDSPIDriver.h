@@ -11,6 +11,8 @@
 
 #include "FatFs-Particle.h"
 
+//LOG_SOURCE_CATEGORY("fatfs_particle.sdspidriver")
+
 #if !PLATFORM_THREADING
 #error "SDSPIDriver currently requires threading"
 #endif
@@ -37,12 +39,6 @@
 #define CMD55	(55)		/* APP_CMD */
 #define CMD58	(58)		/* READ_OCR */
 
-#ifndef DEBUGLOG
-#define DEBUGLOG(lvl, msg, ...)
-#endif
-
-//#define DEBUGLOG(DebugLevel_VVVDeepTrace, x) DEBUGLOG(DebugLevel_Info, x);
-
 #ifndef HOSS_TIMEOUT_CHECKER
 #define HOSS_TIMEOUT_CHECKER
 class TimeoutChecker {
@@ -59,6 +55,7 @@ public:
 template<typename Pin>
 class SDSPIDriver : public FatFsDriver
 {
+	LOG_CATEGORY("fatfs_particle.sdspidriver");
 private:
 	SPIClass* _spi;
 	uint16_t _cs;
@@ -153,13 +150,13 @@ private:
 			BYTE n, res;
 
 			if(!wait_ready(10))
-				DEBUGLOG(DebugLevel_Error, "SD: wait_ready before cmd failed");
+				LOG(ERROR, "SD: wait_ready before cmd failed");
 
 			if (cmd & 0x80) {	/* Send a CMD55 prior to ACMD<n> */
 				cmd &= 0x7F;
 				res = send_cmd(CMD55, 0);
 				if (res > 1) {
-		//			DEBUGLOG(DebugLevel_Error, "SD: CMD55 response 0x%x", res);
+					LOG(TRACE, "SD: CMD55 response 0x%x", res);
 					return res;
 				}
 			}
@@ -207,7 +204,6 @@ private:
 		BYTE d;
 
 		TimeoutChecker timeout(wt);
-	//	DEBUGLOG(DebugLevel_DeepTrace, "wait_ready %u - %u", start, end);
 
 		do {
 			d = xmit_spi(0xFF);
@@ -216,10 +212,10 @@ private:
 	//			os_thread_yield();
 		} while (d != 0xFF && !timeout);	/* Wait for card goes ready or timeout */
 		if (d == 0xFF) {
-			DEBUGLOG(DebugLevel_VVVDeepTrace, "wait_ready: OK");
+//			LOG(TRACE, "wait_ready: OK");
 		} else {
-			DEBUGLOG(DebugLevel_VVVDeepTrace, "wait_ready: timeout");
-			DEBUGLOG(DebugLevel_Error, "SD: wait_ready timeout");
+//			LOG(TRACE, "wait_ready: timeout");
+			LOG(ERROR, "SD: wait_ready timeout");
 		}
 		return (d == 0xFF) ? 1 : 0;
 	}
@@ -229,7 +225,7 @@ private:
 
 		deassertCS();				/* CS = H */
 		_spi->transfer(0xFF);		/* Dummy clock (force DO hi-z for multiple slave SPI) */
-		DEBUGLOG(DebugLevel_VVVDeepTrace, "deselect: ok");
+//		LOG(TRACE, "deselect: ok");
 	}
 
 	int select (void)	/* 1:OK, 0:Timeout */
@@ -238,10 +234,10 @@ private:
 		xmit_spi(0xFF);	/* Dummy clock (force DO enabled) */
 
 		if (wait_ready(100)) {
-			DEBUGLOG(DebugLevel_VVVDeepTrace, "select: OK");
+//			LOG(TRACE, "select: OK");
 			return 1;	/* OK */
 		}
-		DEBUGLOG(DebugLevel_VVVDeepTrace, "select: no");
+		LOG(TRACE, "select: no");
 		deselect();
 		return 0;		/* Timeout */
 	}
@@ -253,13 +249,13 @@ private:
 	{
 		BYTE resp;
 
-		DEBUGLOG(DebugLevel_VVVDeepTrace, "xmit_datablock: inside");
+//		LOG(TRACE, "xmit_datablock: inside");
 
 		if (!wait_ready(100)) {
-			DEBUGLOG(DebugLevel_VVVDeepTrace, "xmit_datablock: not ready");
+			LOG(TRACE, "xmit_datablock: not ready");
 			return 0;		/* Wait for card ready */
 		}
-		DEBUGLOG(DebugLevel_VVVDeepTrace, "xmit_datablock: ready");
+//		LOG(TRACE, "xmit_datablock: ready");
 
 		xmit_spi(token);					/* Send token */
 		if (token != 0xFD) {				/* Send data if token is other than StopTran */
@@ -284,7 +280,7 @@ private:
 			token = xmit_spi(0xFF);
 		} while ((token == 0xFF) && !timeout);
 		if (token != 0xFE) {
-			DEBUGLOG(DebugLevel_VVVDeepTrace, "rcvr_datablock: token != 0xFE");
+			LOG(TRACE, "rcvr_datablock: token != 0xFE");
 			return 0;					// Function fails if invalid DataStart token or timeout
 		}
 
@@ -373,51 +369,51 @@ public:
 		}
 
 		if (send_cmd(CMD0, 0) == 1) {				/* Put the card SPI/Idle state */
-			DEBUGLOG(DebugLevel_Trace, "SD: CMD0 accepted");
+			LOG(TRACE+10, "SD: CMD0 accepted");
 			timeout.start();					/* Initialization timeout = 1 sec */
 			if (send_cmd(CMD8, 0x1AA) == 1) {	/* SDv2? */
-				DEBUGLOG(DebugLevel_Trace, "SD: CMD8 accepted");
+				LOG(TRACE+10, "SD: CMD8 accepted");
 				for (n = 0; n < 4; n++) {
 					ocr[n] = xmit_spi(0xFF);	/* Get 32 bit return value of R7 resp */
 				}
 				if (ocr[2] == 0x01 && ocr[3] == 0xAA) {					/* Is the card supports vcc of 2.7-3.6V? */
-					DEBUGLOG(DebugLevel_Trace, "SD: CMD8 valid response");
+					LOG(TRACE+10, "SD: CMD8 valid response");
 					while (!timeout && send_cmd(ACMD41, 1UL << 30)) ;	/* Wait for end of initialization with ACMD41(HCS) */
 					if (!timeout && send_cmd(CMD58, 0) == 0) {		/* Check CCS bit in the OCR */
-						DEBUGLOG(DebugLevel_Trace, "SD: CMD58 accepted");
+						LOG(TRACE+10, "SD: CMD58 accepted");
 						for (n = 0; n < 4; n++) {
 							ocr[n] = xmit_spi(0xFF);
 						}
 						ty = (ocr[0] & 0x40) ? CT_SD2 | CT_BLOCK : CT_SD2;	/* Card id SDv2 */
-						DEBUGLOG(DebugLevel_Trace, "SD: card type %d", ty);
+						LOG(TRACE+10, "SD: card type %d", ty);
 					} else {
 						if(!timeout)
-							DEBUGLOG(DebugLevel_Trace, "SD: CMD58 unexpected response");
+							LOG(TRACE+10, "SD: CMD58 unexpected response");
 					}
 				} else {
-					DEBUGLOG(DebugLevel_Error, "SD: CMD8 invalid response");
+					LOG(ERROR, "SD: CMD8 invalid response");
 				}
 			} else {	/* Not SDv2 card */
-				DEBUGLOG(DebugLevel_Trace, "SD: not an SDv2 card");
+				LOG(TRACE, "SD: not an SDv2 card");
 				if (send_cmd(ACMD41, 0) <= 1) 	{	/* SDv1 or MMC? */
-					DEBUGLOG(DebugLevel_Trace, "SD: SDv1");
+					LOG(TRACE+10, "SD: SDv1");
 					ty = CT_SD1; cmd = ACMD41;	/* SDv1 (ACMD41(0)) */
 				} else {
-					DEBUGLOG(DebugLevel_Trace, "SD: MMCv3");
+					LOG(TRACE+10, "SD: MMCv3");
 					ty = CT_MMC; cmd = CMD1;	/* MMCv3 (CMD1(0)) */
 				}
 				while (!timeout && send_cmd(cmd, 0));			/* Wait for end of initialization */
 				if (!timeout || send_cmd(CMD16, 512) != 0) {	/* Set block length: 512 */
-					DEBUGLOG(DebugLevel_Error, "SD: unexpected response to CMD16");
+					LOG(ERROR+10, "SD: unexpected response to CMD16");
 					ty = 0;
 				}
 			}
 		}
 		else
-			DEBUGLOG(DebugLevel_Error, "Did not receive response to CMD0");
+			LOG(ERROR, "Did not receive response to CMD0");
 
 		if(timeout)
-			DEBUGLOG(DebugLevel_Error, "SD: timeout on initialize");
+			LOG(ERROR, "SD: timeout on initialize");
 
 		_cardType = ty;	/* Card type */
 		deselect();
@@ -426,7 +422,7 @@ public:
 			_status &= ~STA_NOINIT;	/* Clear STA_NOINIT flag */
 		} else {			/* Failed */
 			_status = STA_NOINIT;
-			DEBUGLOG(DebugLevel_VVVDeepTrace, "Initialize failed");
+			LOG(ERROR, "Initialize failed");
 		}
 
 		if (!writeProtected()) {
@@ -455,7 +451,7 @@ public:
 		UINT read = 0;
 		std::lock_guard<decltype(*this)> lck(*this);
 
-		DEBUGLOG(DebugLevel_VVVDeepTrace, "disk_read: inside");
+//		LOG(TRACE, "disk_read: inside");
 		if (!cardPresent() || (_status & STA_NOINIT))
 			return RES_NOTRDY;
 
@@ -469,10 +465,10 @@ public:
 					count--;
 					read++;
 				} else
-					DEBUGLOG(DebugLevel_Error, "SD: Read failed for sector %d", sector);
+					LOG(ERROR, "SD: Read failed for sector %d", sector);
 			}
 			else
-				DEBUGLOG(DebugLevel_Error, "SD: CMD17 not accepted");
+				LOG(ERROR, "SD: CMD17 not accepted");
 		}
 		deselect();
 		return count ? RES_ERROR : RES_OK;		/* Return result */
@@ -482,11 +478,11 @@ public:
 	{
 		std::lock_guard<decltype(*this)> lck(*this);
 
-		DEBUGLOG(DebugLevel_VVVDeepTrace, "disk_write: inside");
+//		LOG(TRACE, "disk_write: inside");
 		if (!cardPresent())
 			return RES_ERROR;
 		if (writeProtected()) {
-			DEBUGLOG(DebugLevel_VVVDeepTrace, "disk_write: Write protected!!!");
+			LOG(TRACE, "disk_write: Write protected!!!");
 			return RES_WRPRT;
 		}
 		if (_status & STA_NOINIT)
