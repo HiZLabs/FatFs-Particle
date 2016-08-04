@@ -67,7 +67,7 @@ private:
 	volatile uint32_t _high_speed_clock;
 	volatile uint32_t _low_speed_clock;
 	volatile uint32_t _active_clock;
-	os_mutex_t _mutex;
+	std::mutex* _mutex;
 	volatile DSTATUS _status;
 	volatile BYTE _cardType;
 	volatile bool _busy;
@@ -274,7 +274,8 @@ private:
 
 	void lock()
 	{
-		os_mutex_lock(_mutex);
+		if(_mutex != nullptr)
+			_mutex->lock();
 		_busy = true;
 		_busy_check = true;
 		setSPI();
@@ -283,7 +284,9 @@ private:
 	void unlock()
 	{
 		_busy = false;
-		os_mutex_unlock(_mutex);
+
+		if(_mutex != nullptr)
+			_mutex->unlock();
 	}
 
 	friend class std::lock_guard<SDSPIDriver<Pin>>;
@@ -305,24 +308,22 @@ public:
 
 	virtual ~SDSPIDriver() {}
 
-	os_mutex_t begin(SPIClass& spi, const uint16_t cs, os_mutex_t mutex = nullptr)
+	void begin(SPIClass& spi, const uint16_t cs)
 	{
 		_spi = &spi;
 		_cs = cs;
 
-		if(_mutex != nullptr)
-			os_mutex_destroy(_mutex);
-		_mutex = mutex;
-		if(_mutex == nullptr)
-			os_mutex_create(&_mutex);
-
 		pinMode(cs, OUTPUT);
 		digitalWrite(cs, HIGH);
-
-		return _mutex;
 	}
 
-	os_mutex_t get_mutex() { return _mutex; };
+
+	void begin(SPIClass& spi, const uint16_t cs, std::mutex& mutex)
+	{
+		begin(spi, cs);
+
+		_mutex = &mutex;
+	}
 
 	virtual DSTATUS initialize() {
 		UINT n, cmd, ty, ocr[4];
