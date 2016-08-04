@@ -23,9 +23,20 @@
 
 #include "trampoline.h"
 
-void invoke_trampoline(void(*invoke)(trampoline_callback_t, void*), const void* invoke_arg, void(*callback)(void*), const void* callback_arg) {
-	void callback_caller() {
-		callback(callback_arg);
-	}
-	invoke(callback_caller, invoke_arg);
+void invoke_trampoline(const std::function<void(void(*)())>& invocation, const std::function<void()>& callback)
+{
+
+	auto _invoke = [](void(*callback)(), void* arg) {
+		std::function<void(void(*)())>* inv = (std::function<void(void(*)())>*)arg;
+		(*inv)(callback);
+	};
+
+	auto _callback = [](void* arg){
+		std::function<void()>* c = (std::function<void()>*)arg;
+		(*c)();
+	};
+
+	invoke_trampoline(_invoke, &invocation, _callback, &callback);
 }
+
+

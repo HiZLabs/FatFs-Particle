@@ -76,7 +76,7 @@ private:
 	volatile bool _busy;
 	volatile bool _busy_check;
 
-	os_mutex_t _dmaSignal;
+	std::mutex _dmaSignal;
 
 	uint8_t* _buffer;
 	size_t _bufferSize;
@@ -96,10 +96,10 @@ private:
 	}
 
 	void startTransfer() {
-		os_mutex_lock(_dmaSignal);
+		_dmaSignal.lock();
 	}
-		void transferComplete() { os_mutex_unlock(_dmaSignal); };
-		void waitForTransfer() { os_mutex_lock(_dmaSignal); os_mutex_unlock(_dmaSignal); }
+		void transferComplete() { _dmaSignal.unlock(); };
+		void waitForTransfer() { _dmaSignal.lock(); _dmaSignal.unlock(); }
 
 	/* Send multiple byte */
 	void xmit_spi_multi (
@@ -108,23 +108,13 @@ private:
 	)
 	{
 		/* Write multiple bytes */
-		startTransfer();
-
-		_buffer = (BYTE*)buff;
-		_bufferSize = btx;
-
-		auto invoke = [](void(*callback)(), void* arg) {
-			SDSPIDriver* self = (SDSPIDriver*)arg;
-			self->_spi->transfer(self->_buffer, nullptr, self->_bufferSize, callback);
-			self->waitForTransfer();
-		};
-
-		auto callback = [](void* arg){
-			SDSPIDriver* self = (SDSPIDriver*)arg;
-			self->transferComplete();
-		};
-
-		trampoline(invoke, this, callback, this);
+		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
+			startTransfer();
+			_spi->transfer((BYTE*)buff, nullptr, btx, callback);
+			waitForTransfer();
+		}, [&]() {
+			transferComplete();
+		});
 	}
 
 	void rcvr_spi_multi (
@@ -135,23 +125,13 @@ private:
 		/* Read multiple bytes, send 0xFF as dummy */
 		memset(buff, 0xff, btr);
 
-		startTransfer();
-
-		_buffer = (BYTE*)buff;
-		_bufferSize = btr;
-
-		auto invoke = [](void(*callback)(), void* arg) {
-			SDSPIDriver* self = (SDSPIDriver*)arg;
-			self->_spi->transfer(self->_buffer, self->_buffer, self->_bufferSize, callback);
-			self->waitForTransfer();
-		};
-
-		auto callback = [](void* arg){
-			SDSPIDriver* self = (SDSPIDriver*)arg;
-			self->transferComplete();
-		};
-
-		trampoline(invoke, this, callback, this);
+		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
+			startTransfer();
+			_spi->transfer(buff, buff, btr, callback);
+			waitForTransfer();
+		}, [&]() {
+			transferComplete();
+		});
 	}
 
 	BYTE send_cmd (		/* Return value: R1 resp (bit7==1:Failed to send) */
@@ -314,9 +294,9 @@ public:
 		_status(STA_NOINIT),
 		_cardType(0),
 		_have_lock(false),
-		_dmaSignal(nullptr),
 		_busy(false),
-		_busy_check(false) {}
+		_busy_check(false),
+		_dmaSignal() {}
 
 	virtual void lock()
 	{
@@ -346,9 +326,6 @@ public:
 		_mutex = mutex;
 		if(_mutex == nullptr)
 			os_mutex_create(&_mutex);
-
-		if(_dmaSignal == nullptr)
-			os_mutex_create(&_dmaSignal);
 
 		_have_lock = false;
 
