@@ -36,7 +36,7 @@ void invoke_trampoline(const std::function<void(void(*)())>& invocation, const s
 		(*c)();
 	};
 
-	invoke_trampoline(_invoke, &invocation, _callback, &callback);
+	invoke_trampoline(_invoke, (void*)&invocation, _callback, (void*)&callback);
 }
 
 

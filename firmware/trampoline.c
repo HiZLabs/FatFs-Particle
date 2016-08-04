@@ -23,7 +23,7 @@
 
 #include "trampoline.h"
 
-void invoke_trampoline(void(*invoke)(trampoline_callback_t, void*), const void* invoke_arg, void(*callback)(void*), const void* callback_arg) {
+void invoke_trampoline(void(*invoke)(trampoline_callback_t, void*), void* invoke_arg, void(*callback)(void*), void* callback_arg) {
 	void callback_caller() {
 		callback(callback_arg);
 	}

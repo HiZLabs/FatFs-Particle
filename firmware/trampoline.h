@@ -100,7 +100,7 @@ typedef void(*trampoline_callback_t)();
  *	called, via function_pointer, but as the stack grows from executing the Serial.println, the function would likely end up
  *	clobbering itself. You must make sure that the callback is not used beyond the scope of the first function--no exceptions.
  */
-void invoke_trampoline(void(*invoke)(trampoline_callback_t, void*), const void* invoke_arg, void(*callback)(void*), const void* callback_arg);
+void invoke_trampoline(void(*invoke)(trampoline_callback_t, void*), void* invoke_arg, void(*callback)(void*), void* callback_arg);
 
 #ifdef __cplusplus
 }
