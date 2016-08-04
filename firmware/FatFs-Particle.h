@@ -24,6 +24,19 @@
 #include <memory>
 #include "application.h"
 
+#ifndef LOG_SOURCE_CATEGORY
+#define LOG_SOURCE_CATEGORY(x)
+#endif
+
+#ifndef LOG_CATEGORY
+#define LOG_CATEGORY(x)
+#endif
+
+#ifndef LOG
+#define LOG(x,y,...)
+#endif
+
+
 extern "C" {
 #include "diskio.h"
 }
