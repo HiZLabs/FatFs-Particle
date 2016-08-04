@@ -74,7 +74,5 @@ public:
 	static const char* fileResultMessage(FRESULT fileResult) { return FR_string(fileResult); }
 };
 
-#include "SDSPIDriver.h"
-
 #endif /* FATFS_PARTICLE_H_ */
 
