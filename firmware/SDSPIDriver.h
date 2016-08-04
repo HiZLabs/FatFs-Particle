@@ -60,10 +60,10 @@ private:
 	uint16_t _cs;
 	Pin _cd;
 	volatile bool _cd_enabled;
-	volatile bool _cd_active_low;
+	volatile uint8_t _cd_active_state;
 	Pin _wp;
 	volatile bool _wp_enabled;
-	volatile bool _wp_active_low;
+	volatile uint8_t _wp_active_state;
 	volatile uint32_t _high_speed_clock;
 	volatile uint32_t _low_speed_clock;
 	volatile uint32_t _active_clock;
@@ -294,9 +294,9 @@ public:
 	SDSPIDriver() : FatFsDriver(),
 		_spi(nullptr),
 		_cd_enabled(false),
-		_cd_active_low(true),
+		_cd_active_state(HIGH),
 		_wp_enabled(false),
-		_wp_active_low(true),
+		_wp_active_state(LOW),
 		_high_speed_clock(15000000),
 		_low_speed_clock(400000),
 		_active_clock(_low_speed_clock),
@@ -575,8 +575,8 @@ public:
 		return res;
 	}
 
-	bool cardPresent() { return !_cd_enabled || (digitalRead(_cd) == _cd_active_low? LOW : HIGH); }
-	bool writeProtected() { return _wp_enabled && (digitalRead(_wp) == _wp_active_low? LOW : HIGH); }
+	bool cardPresent() { return !_cd_enabled || digitalRead(_cd) == _cd_active_state; }
+	bool writeProtected() { return _wp_enabled && digitalRead(_wp) == _wp_active_state; }
 
 	uint32_t highSpeedClock() { return _high_speed_clock; }
 	uint32_t lowSpeedClock() { return _low_speed_clock; }
@@ -584,8 +584,8 @@ public:
 	void lowSpeedClock(uint32_t clock) { _low_speed_clock = clock; }
 	uint32_t activeClock() { return _active_clock; }
 
-	void enableCardDetect(const Pin& cdPin, bool activeLow = true) { _cd = cdPin; _cd_active_low = activeLow; _cd_enabled = true; }
-	void enableWriteProtectDetect(const Pin& wpPin, bool activeLow = true) { _wp = wpPin; _wp_active_low = activeLow; _wp_enabled = true; }
+	void enableCardDetect(const Pin& cdPin, bool activeState = HIGH) { _cd = cdPin; _cd_active_state = activeState; _cd_enabled = true; }
+	void enableWriteProtectDetect(const Pin& wpPin, bool activeState = LOW) { _wp = wpPin; _wp_active_state = activeState; _wp_enabled = true; }
 
 	bool wasBusySinceLastCheck() {
 		bool wasBusy;
