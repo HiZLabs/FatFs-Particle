@@ -147,12 +147,12 @@
 / Drive/Volume Configurations
 /---------------------------------------------------------------------------*/
 
-#define _VOLUMES	2
+#define _VOLUMES	4
 /* Number of volumes (logical drives) to be used. */
 
 
 #define _STR_VOLUME_ID	0
-#define _VOLUME_STRS	"SD", "EE"
+#define _VOLUME_STRS	"A", "B", "C", "D"
 /* _STR_VOLUME_ID switches string support of volume ID.
 /  When _STR_VOLUME_ID is set to 1, also pre-defined strings can be used as drive
 /  number in the path name. _VOLUME_STRS defines the drive ID strings for each
@@ -243,12 +243,13 @@
 #if PLATFORM_THREADING
 #include "concurrent_import.h"
 #define _FS_REENTRANT	1
+#define	_SYNC_t			os_mutex_t
 #else
 #define _FS_REENTRANT 0
+#define	_SYNC_t			void*
 #endif
 
 #define _FS_TIMEOUT		1000
-#define	_SYNC_t			os_mutex_t
 /* The option _FS_REENTRANT switches the re-entrancy (thread safe) of the FatFs
 /  module itself. Note that regardless of this option, file access to different
 /  volume is always re-entrant and volume control functions, f_mount(), f_mkfs()

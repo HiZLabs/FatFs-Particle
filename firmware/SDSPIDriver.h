@@ -12,8 +12,6 @@
 #include "FatFs-Particle.h"
 #include "trampoline.h"
 
-//LOG_SOURCE_CATEGORY("fatfs_particle.sdspidriver")
-
 #if !PLATFORM_THREADING
 #error "SDSPIDriver currently requires threading"
 #endif
@@ -72,14 +70,8 @@ private:
 	os_mutex_t _mutex;
 	volatile DSTATUS _status;
 	volatile BYTE _cardType;
-	volatile bool _have_lock;
 	volatile bool _busy;
 	volatile bool _busy_check;
-
-	std::mutex _dmaSignal;
-
-	uint8_t* _buffer;
-	size_t _bufferSize;
 
 	void assertCS() { digitalWrite(_cs, LOW); }
 	void deassertCS() { digitalWrite(_cs, HIGH); }
@@ -95,25 +87,21 @@ private:
 		_spi->setBitOrder(MSBFIRST);
 	}
 
-	void startTransfer() {
-		_dmaSignal.lock();
-	}
-		void transferComplete() { _dmaSignal.unlock(); };
-		void waitForTransfer() { _dmaSignal.lock(); _dmaSignal.unlock(); }
-
 	/* Send multiple byte */
 	void xmit_spi_multi (
 		const BYTE *buff,	/* Pointer to the data */
 		UINT btx			/* Number of bytes to send (even number) */
 	)
 	{
+		std::mutex signal;
 		/* Write multiple bytes */
 		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
-			startTransfer();
+			signal.lock();
 			_spi->transfer((BYTE*)buff, nullptr, btx, callback);
-			waitForTransfer();
+			signal.lock();
+			signal.unlock();
 		}, [&]() {
-			transferComplete();
+			signal.unlock();
 		});
 	}
 
@@ -122,15 +110,18 @@ private:
 		UINT btr		/* Number of bytes to receive (even number) */
 	)
 	{
+		std::mutex signal;
+
 		/* Read multiple bytes, send 0xFF as dummy */
 		memset(buff, 0xff, btr);
 
 		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
-			startTransfer();
+			signal.lock();
 			_spi->transfer(buff, buff, btr, callback);
-			waitForTransfer();
+			signal.lock();
+			signal.unlock();
 		}, [&]() {
-			transferComplete();
+			signal.unlock();
 		});
 	}
 
@@ -280,6 +271,22 @@ private:
 		xmit_spi(0xFF);					// Discard CRC
 		return 1;						// Function succeeded
 	}
+
+	void lock()
+	{
+		os_mutex_lock(_mutex);
+		_busy = true;
+		_busy_check = true;
+		setSPI();
+	}
+
+	void unlock()
+	{
+		_busy = false;
+		os_mutex_unlock(_mutex);
+	}
+
+	friend class std::lock_guard<SDSPIDriver<Pin>>;
 public:
 	SDSPIDriver() : FatFsDriver(),
 		_spi(nullptr),
@@ -293,26 +300,8 @@ public:
 		_mutex(nullptr),
 		_status(STA_NOINIT),
 		_cardType(0),
-		_have_lock(false),
 		_busy(false),
-		_busy_check(false),
-		_dmaSignal() {}
-
-	virtual void lock()
-	{
-		os_mutex_lock(_mutex);
-		_busy = true;
-		_busy_check = true;
-		setSPI();
-	}
-
-	virtual void unlock()
-	{
-		_busy = false;
-		os_mutex_unlock(_mutex);
-	}
-
-	os_mutex_t get_mutex() { return _mutex; };
+		_busy_check(false) {}
 
 	virtual ~SDSPIDriver() {}
 
@@ -327,17 +316,17 @@ public:
 		if(_mutex == nullptr)
 			os_mutex_create(&_mutex);
 
-		_have_lock = false;
-
 		pinMode(cs, OUTPUT);
 		digitalWrite(cs, HIGH);
 
 		return _mutex;
 	}
 
+	os_mutex_t get_mutex() { return _mutex; };
+
 	virtual DSTATUS initialize() {
 		UINT n, cmd, ty, ocr[4];
-		std::lock_guard<decltype(*this)> lck(*this);
+		std::lock_guard<SDSPIDriver<Pin>> lck(*this);
 
 		activateLowSpeed();
 
@@ -438,7 +427,7 @@ public:
 
 	virtual DRESULT read(BYTE* buff, DWORD sector, UINT count) {
 		UINT read = 0;
-		std::lock_guard<decltype(*this)> lck(*this);
+		std::lock_guard<SDSPIDriver<Pin>> lck(*this);
 
 //		LOG(TRACE, "disk_read: inside");
 		if (!cardPresent() || (_status & STA_NOINIT))
@@ -465,7 +454,7 @@ public:
 
 	virtual DRESULT write(const BYTE* buff, DWORD sector, UINT count)
 	{
-		std::lock_guard<decltype(*this)> lck(*this);
+		std::lock_guard<SDSPIDriver<Pin>> lck(*this);
 
 //		LOG(TRACE, "disk_write: inside");
 		if (!cardPresent())
@@ -507,7 +496,7 @@ public:
 
 	virtual DRESULT ioctl(BYTE cmd, void* buff)
 	{
-		std::lock_guard<decltype(*this)> lck(*this);
+		std::lock_guard<SDSPIDriver<Pin>> lck(*this);
 
 		DRESULT res;
 		BYTE n, csd[16];
