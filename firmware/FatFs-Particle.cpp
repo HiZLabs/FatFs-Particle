@@ -90,11 +90,11 @@ FRESULT FatFs::attach(FatFsDriver& driver, BYTE driveNumber)
 	path[2] = 0;
 
 	FRESULT result = f_mount(&_drivers[driveNumber]->fs, path, 1);
-	_drivers[driveNumber]->_attached = result == 0;
+	_drivers[driveNumber]->_attached = result == FR_OK;
 
-	if(!_drivers[driveNumber]->_attached) {
+	if(result != FR_OK) {
 		_drivers[driveNumber] = nullptr;
-		return FR_DISK_ERR;
+		return result;
 	}
 
 	return result;
