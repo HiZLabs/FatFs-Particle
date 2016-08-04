@@ -13,7 +13,6 @@
 #else
 
 #include <stddef.h>
-#include "logging.h"
 
 #define bool uint8_t
 typedef uint32_t system_tick_t;
