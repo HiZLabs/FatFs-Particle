@@ -207,6 +207,7 @@ FRESULT print_free_space(uint8_t driveNumber, Print& print) {
 
 static const char prefixes[] = { 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' };
 
+#include <math.h>
 //Format a number of bytes into a 4-character wide field including an SI prefix for order of magnitude (orders of 1024, not 1000)
 String bytesToPretty(uint64_t bytes) {
     char buf[15];
