@@ -52,6 +52,33 @@
   * Put some files on the SD card before running the program, and you'll know it's working when
   * the device prints the details of the file.
   *
+  * ** SAMPLE OUTPUT **
+  * Setting up SD driver
+  * Attaching SD card to drive 0:
+  * SD drive mounted (0) Succeeded
+  * D-HS-  2015/10/16  12:33  <DIR>  0:/SYSTEM~1
+  * ----A  2015/10/16  12:33     76  0:/SYSTEM~1/INDEXE~1
+  * ----A  2015/10/16  13:27     12  0:/SYSTEM~1/WPSETT~1.DAT
+  * ----A  2015/06/17  20:15    128  0:/AUTORUN.INF
+  *  ...
+  * D-H--  2016/04/25  15:43  <DIR>  0:/FSEVEN~1
+  * ----A  2016/04/25  15:54     36  0:/FSEVEN~1/FSEVEN~1
+  * ----A  2016/04/25  15:54     63  0:/FSEVEN~1/000000~1
+  * ----A  2016/04/25  15:54     71  0:/FSEVEN~1/000000~2
+  * D----  2015/10/20  10:38  <DIR>  0:/STORAGE
+  * ----A  2012/07/28  20:52   3.1G  0:/STORAGE/EN_WIN~1.ISO
+  * --H-A  2016/01/30  12:43     4K  0:/STORAGE/_EN_WI~1.ISO
+  * 
+  * Disk 0 usage
+  * 7.1G used (24.0%)
+  *  22G free (76.0%)
+  *  29G total
+  * 
+  * [12946] ----A  2016/08/05  18:15      5  0:/sd_test.txt
+  * [12947] ----A  2016/08/05  18:16      5  0:/sd_test.txt
+  * [12948] ----A  2016/08/05  18:16      5  0:/sd_test.txt
+  * [12949] ----A  2016/08/05  18:16      5  0:/sd_test.txt
+  *
   * ** NOTES **
   * - Output is printed to the USB serial interface
   * - Only FAT32 volumes are supported...maybe FAT16...definitely not exFAT.
