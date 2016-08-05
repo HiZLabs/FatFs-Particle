@@ -17,7 +17,7 @@
 / by use of this software.
 /----------------------------------------------------------------------------*/
 
-#include "FatFs-Particle.h"
+#include "FatFs.h"
 
 LOG_SOURCE_CATEGORY("fatfs_particle.diskio");
 

@@ -1,29 +1,30 @@
-# FatFs-Particle
+# FatFs (Particle library)
 
-FatFs-Particle is a FAT disk access library with linkage for Particle
+FatFs includes the FatFs library from ChaN (v0.12) and a C++ wrapper and driver interface. Up to 4 drivers can be loaded simultaneously.
 
-  - Includes SD card (SPI mode) driver
-  - Simple driver interface for extending to any storage medium
-  - Currently only supports multi-thread configurations
-  - MIT license for use in proprietary closed-source projects
+**Quickstart** (using FatFs-SD driver for SD cards)
 
-**Quickstart: SD card**
-
-1. Include FatFs-Particle library
-2. Delare instance of driver
-3. Setup driver
+1. Include FatFs library
+2. Include a driver library
+3. Declare and set up instance of driver
 4. Attach (mount) driver
 
-```
-/* FatFsSdExample.ino */
-#include "application.h"
-#include <FatFs-Particle/FatFs-Particle.h>
+```c++
+SYSTEM_THREAD(ENABLED); //required for FatFs-SD
+#include <FatFs/FatFs.h>
 
-FatFsSd SD0;
+//Include a driver library
+#include <FatFs-SD/FatFs-SD.h>
+//Declare an instance of the driver
+FatFsSD SD0;
+
 void setup() 
 {
+    //Set up driver instance
     SD0.begin(SPI, A2);
+    //Attach driver instance to drive 0:
     FRESULT result = FatFs::attach(SD0, 0);
+    //FatFs operations return FRESULT codes. FR_OK indicates success.
     if(result != FR_OK)
     {
         Serial.print("Drive attach failed: ");
@@ -41,7 +42,7 @@ After attaching the drive, you will use the FatFs API to use the drive. For refe
 
 The drive is attached using the drive number you supply. In the example code, the SD card is attached on drive number 0, so the file `\test.txt` on the SD card would be accessed at the path `0:/test.txt`.
 
-**`FatFs::` static functions** | Attaching and detaching drivers and interpresting error messages
+**`FatFs::` function reference** | attaching and detaching drivers and interpreting error messages
 
 | function      | description          |
 | ------------- | -------------------- |
@@ -49,21 +50,17 @@ The drive is attached using the drive number you supply. In the example code, th
 |`void FatFs::detach(BYTE driveNumber)`| detach a driver (does not close open files) |
 |`const char* FatFs::fileResultMessage(FRESULT fileResult)`| returns a user-readable status message for FRESULT error codes|
 
-**Sharing the SPI bus** | The SD SPI driver included with FatFs-Particle uses a mutex (`os_mutex_t`) to mediate access to the SPI bus if the bus is shared. 
+**Custom Drivers** | A driver for any storage device can be created by extending the abstract class `FatFsDriver`. This driver can then be attached using `FatFs::attach()`. For more information, see the `disk_` functions in the [FatFs documentation](http://elm-chan.org/fsw/ff/00index_e.html) under the section *Device Control Interface*.
 
-*TODO: example of shared SPI bus usage*
-
-**Custom Drivers** | A driver for any storage device can be created by extending the abstract class `FatFsDriver`. This driver can then be attached using `FatFs::attach()`.
-
-```
+```c++
 class MyCustomFatFsDriver : public FatFsDriver {
 public:
-	virtual ~FatFsDriver();
 	virtual DSTATUS initialize();
 	virtual DSTATUS status();
 	virtual DRESULT read(BYTE* buff, DWORD sector, UINT count);
 	virtual DRESULT write(const BYTE* buff, DWORD sector, UINT count);
 	virtual DRESULT ioctl(BYTE cmd, void* buff);
+	virtual ~FatFsDriver();
 };
 ```
 
