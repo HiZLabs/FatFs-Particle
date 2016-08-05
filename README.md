@@ -2,7 +2,7 @@
 
 FatFs includes the FatFs library from ChaN (v0.12) and a C++ wrapper and driver interface. Up to 4 drivers can be loaded simultaneously.
 
-**Quickstart** (using FatFs-SD driver for SD cards)
+**Quickstart** (using [FatFs-SD](https://github.com/HiZLabs/FatFs-Particle-SD) driver for SD cards)
 
 1. Include FatFs library
 2. Include a driver library
