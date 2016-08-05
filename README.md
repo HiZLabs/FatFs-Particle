@@ -1,6 +1,12 @@
 # FatFs (Particle library)
 
-FatFs includes the FatFs library from ChaN (v0.12) and a C++ wrapper and driver interface. Up to 4 drivers can be loaded simultaneously.
+FatFs includes the FatFs library from ChaN (v0.12) and a C++ driver interface. Up to 4 drivers can be loaded simultaneously.
+
+**Goals of this project**
+
+- Filesystem I/O on Particle with a license compatible with proprietary projects
+- Separate out device drivers from filesystem driver in an extensible fashion
+- Dynamically attach drivers
 
 **Quickstart** (using FatFsSD driver included in library)
 
@@ -37,14 +43,15 @@ void loop()
 }
 ```
 
+**Using the filesystem** | 
 After attaching the drive, you will use the FatFs API to use the drive. For reference and examples for interacting with the filesystem, see the [FatFs documentation](http://elm-chan.org/fsw/ff/00index_e.html). 
 
 The drive is attached using the drive number you supply. In the example code, the SD card is attached on drive number 0, so the file `\test.txt` on the SD card would be accessed at the path `0:/test.txt`.
 
-The example program shows how to perform several file operations including reading and writing files, getting file info such as size and attributes, and traversal of the directory structure.
+The included example program demonstrates performing several file operations including reading and writing files, getting file info such as size and attributes, and traversal of the directory structure.
 
 API Reference
-=========
+=============
 
 **`FatFs::` function reference** | attaching and detaching drivers and interpreting error messages
 
@@ -59,7 +66,7 @@ API Reference
 | function      | description          |
 | ------------- | -------------------- |
 | `void begin(SPIClass& spi, const uint16_t cs)` | Set up instance with an SPI interface and CS pin. |
-|`void begin(SPIClass& spi, const uint16_t cs, std::mutex& mutex)`| Set up instance with SPI interface, CS pin, and a mutex for sharing access to the SPI interface. |
+|`void begin(SPIClass& spi, const uint16_t cs, std::mutex& mutex)`| Set up instance with SPI interface, CS pin, and a mutex for sharing access to the SPI interface. *Available only on threaded platforms.*|
 |`void enableCardDetect(const uint16_t cdPin, uint8_t activeState)`| Set up a pin to signal whether or not card is present. Pass `HIGH` or `LOW` for `activeState`. |
 | `void enableWriteProtectDetect(const Pin& wpPin, bool activeState)` | Set up a pin to signal whether or not card is write protected. Pass `HIGH` or `LOW` for `activeState`. |
 | `uint32_t highSpeedClock()` | Returns the current high-speed clock limit in Hz. High speed is used after the card interface has been initialized. |
