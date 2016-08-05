@@ -114,6 +114,8 @@ void loop() {
     delay(1000);
 }
 
+
+//print the directory entry info for a supplied path using already-loaded FILINFO
 void print_file_info(const char* path, const FILINFO& fileInfo, Print& print) {
     bool isDir;
     Serial.printf("%c%c%c%c%c",
@@ -129,6 +131,7 @@ void print_file_info(const char* path, const FILINFO& fileInfo, Print& print) {
     Serial.println(path);
 }
 
+//print the directory entry info for a supplied path
 FRESULT print_file_info(const char* path, Print& print) {
     FILINFO fileInfo;
     FRESULT result = f_stat(path, &fileInfo);
@@ -204,7 +207,7 @@ FRESULT print_free_space(uint8_t driveNumber, Print& print) {
 
 static const char prefixes[] = { 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' };
 
-#include <math.h>
+//Format a number of bytes into a 4-character wide field including an SI prefix for order of magnitude (orders of 1024, not 1000)
 String bytesToPretty(uint64_t bytes) {
     char buf[15];
     double value = bytes;
