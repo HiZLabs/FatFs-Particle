@@ -102,41 +102,33 @@ private:
  #else
 		std::mutex signal;
  #endif
-#else
-		volatile bool complete = false;
-#endif
-		/* Write multiple bytes */
+
 		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
-#if PLATFORM_THREADING
+
  #ifndef SYSTEM_VERSION_060
 			signal.lock();
  #endif
-#endif
 			_spi->transfer((BYTE*)buff, nullptr, btx, callback);
-#if PLATFORM_THREADING
-#ifdef SYSTEM_VERSION_060
+
+ #ifdef SYSTEM_VERSION_060
 			os_queue_take(signal, &result, CONCURRENT_WAIT_FOREVER, nullptr);
 			os_queue_destroy(signal, nullptr);
 			signal = nullptr;
-#else
+ #else
 			signal.lock();
 			signal.unlock(); //superfluous, but...but...
-#endif
-
-#else
-			while(!complete);
-#endif
+ #endif
 		}, [&]() {
-#if PLATFORM_THREADING
  #ifdef SYSTEM_VERSION_060
 			os_queue_put(signal, result, 0, nullptr);
  #else
 			signal.unlock();
  #endif
-#else
-			complete = true;
-#endif
 		});
+#else
+		//DMA not working on core
+		_spi->transfer((BYTE*)buff, nullptr, btx, nullptr);
+#endif
 	}
 
 	void rcvr_spi_multi (
@@ -157,40 +149,33 @@ private:
  #else
 		std::mutex signal;
  #endif
-#else
-		volatile bool complete = false;
-#endif
+
 		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
-#if PLATFORM_THREADING
+
  #ifndef SYSTEM_VERSION_060
 			signal.lock();
  #endif
-#endif
 			_spi->transfer(buff, buff, btr, callback);
-#if PLATFORM_THREADING
-#ifdef SYSTEM_VERSION_060
+
+ #ifdef SYSTEM_VERSION_060
 			os_queue_take(signal, &result, CONCURRENT_WAIT_FOREVER, nullptr);
 			os_queue_destroy(signal, nullptr);
 			signal = nullptr;
-#else
+ #else
 			signal.lock();
 			signal.unlock(); //superfluous, but...but...
-#endif
-
-#else
-			while(!complete);
-#endif
+ #endif
 		}, [&]() {
-#if PLATFORM_THREADING
  #ifdef SYSTEM_VERSION_060
 			os_queue_put(signal, result, 0, nullptr);
  #else
 			signal.unlock();
  #endif
-#else
-			complete = true;
-#endif
 		});
+#else
+		//DMA not working on core
+		_spi->transfer(buff, buff, btr, nullptr);
+#endif
 	}
 
 	BYTE send_cmd (		/* Return value: R1 resp (bit7==1:Failed to send) */
