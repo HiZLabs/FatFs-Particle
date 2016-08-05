@@ -97,6 +97,8 @@ FRESULT FatFs::attach(FatFsDriver& driver, BYTE driveNumber)
 		return result;
 	}
 
+	_drivers[driveNumber]->_driveNumber = driveNumber;
+
 	return result;
 }
 
@@ -111,6 +113,7 @@ void FatFs::detach(BYTE driveNumber)
 		path[2] = 0;
 		f_mount(nullptr, path, 0);
 		_drivers[driveNumber] = nullptr;
+		driver->_driveNumber = DRIVE_NOT_ATTACHED;
 	}
 }
 
@@ -136,3 +139,15 @@ const char* FR_strings[] = {
 		/*FR_TOO_MANY_OPEN_FILES*/	"(18) Number of open files > _FS_LOCK",
 		/*FR_INVALID_PARAMETER*/	"(19) Given parameter is invalid",
 };
+
+FatFsDriver::~FatFsDriver() {
+	if(_attached) {
+		FatFs::detach(_driveNumber);
+	}
+}
+
+
+extern "C" BYTE __get_system_is_threaded() {
+    return system_thread_get_state(NULL) != spark::feature::DISABLED &&
+      (system_mode()!=SAFE_MODE);
+}

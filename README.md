@@ -2,7 +2,7 @@
 
 FatFs includes the FatFs library from ChaN (v0.12) and a C++ wrapper and driver interface. Up to 4 drivers can be loaded simultaneously.
 
-**Quickstart** (using [FatFs-SD](https://github.com/HiZLabs/FatFs-Particle-SD) driver for SD cards)
+**Quickstart** (using FatFsSD driver included in library)
 
 1. Include FatFs library
 2. Include a driver library
@@ -10,11 +10,11 @@ FatFs includes the FatFs library from ChaN (v0.12) and a C++ wrapper and driver 
 4. Attach (mount) driver
 
 ```c++
-SYSTEM_THREAD(ENABLED); //required for FatFs-SD
 #include <FatFs/FatFs.h>
 
-//Include a driver library
-#include <FatFs-SD/FatFs-SD.h>
+//If using another driver, include the library
+//#include <OtherDriver/OtherDriver.h>
+
 //Declare an instance of the driver
 FatFsSD SD0;
 
@@ -27,8 +27,7 @@ void setup()
     //FatFs operations return FRESULT codes. FR_OK indicates success.
     if(result != FR_OK)
     {
-        Serial.print("Drive attach failed: ");
-        Serial.println(FatFs::fileResultMessage(result));
+        Serial.printlnf("Drive attach failed: %s", FatFs::fileResultMessage(result));
     }
 }
 
@@ -42,6 +41,11 @@ After attaching the drive, you will use the FatFs API to use the drive. For refe
 
 The drive is attached using the drive number you supply. In the example code, the SD card is attached on drive number 0, so the file `\test.txt` on the SD card would be accessed at the path `0:/test.txt`.
 
+The example program shows how to perform several file operations including reading and writing files, getting file info such as size and attributes, and traversal of the directory structure.
+
+API Reference
+=========
+
 **`FatFs::` function reference** | attaching and detaching drivers and interpreting error messages
 
 | function      | description          |
@@ -49,6 +53,22 @@ The drive is attached using the drive number you supply. In the example code, th
 | `FRESULT FatFs::attach(FatFsDriver& driver, BYTE driveNumber)` | attach a driver to a drive number |
 |`void FatFs::detach(BYTE driveNumber)`| detach a driver (does not close open files) |
 |`const char* FatFs::fileResultMessage(FRESULT fileResult)`| returns a user-readable status message for FRESULT error codes|
+
+**`FatFsSD` member function reference** | configuring and using an instance of the driver
+
+| function      | description          |
+| ------------- | -------------------- |
+| `void begin(SPIClass& spi, const uint16_t cs)` | Set up instance with an SPI interface and CS pin. |
+|`void begin(SPIClass& spi, const uint16_t cs, std::mutex& mutex)`| Set up instance with SPI interface, CS pin, and a mutex for sharing access to the SPI interface. |
+|`void enableCardDetect(const uint16_t cdPin, uint8_t activeState)`| Set up a pin to signal whether or not card is present. Pass `HIGH` or `LOW` for `activeState`. |
+| `void enableWriteProtectDetect(const Pin& wpPin, bool activeState)` | Set up a pin to signal whether or not card is write protected. Pass `HIGH` or `LOW` for `activeState`. |
+| `uint32_t highSpeedClock()` | Returns the current high-speed clock limit in Hz. High speed is used after the card interface has been initialized. |
+| `void highSpeedClock(uint32_t clock)` | Sets the high-speed clock maximum speed in Hz. The initial value is `15000000`. |
+| `uint32_t lowSpeedClock()` | Returns the current low-speed clock limit in Hz. Low speed is used for initialization of the SD card. |
+| `void lowSpeedClock(uint32_t clock)` | Sets the low-speed clock maximum speed in Hz. The initial value is `400000`. |
+| `uint32_t activeClock()` | Returns the active clock speed limit in Hz. |
+| `bool wasBusySinceLastCheck()` | Returns true if the disk was read or written since the last call. (For use in a UI loop to update the status of an LED) |
+
 
 **Custom Drivers** | A driver for any storage device can be created by extending the abstract class `FatFsDriver`. This driver can then be attached using `FatFs::attach()`. For more information, see the `disk_` functions in the [FatFs documentation](http://elm-chan.org/fsw/ff/00index_e.html) under the section *Device Control Interface*.
 

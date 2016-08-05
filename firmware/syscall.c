@@ -7,10 +7,12 @@
 #include "ff.h"
 #include "hw_ticks.h"
 
+#if _FS_REENTRANT
+
 //LOG_SOURCE_CATEGORY("fatfs_particle.syscall")
 
+//BYTE __get_system_is_threaded();
 
-#if _FS_REENTRANT
 /*------------------------------------------------------------------------*/
 /* Create a Synchronization Object
 /*------------------------------------------------------------------------*/

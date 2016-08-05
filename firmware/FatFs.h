@@ -41,20 +41,26 @@ extern "C" {
 #include "diskio.h"
 }
 
+#define DRIVE_NOT_ATTACHED 255
+
+class FatFs;
+
 class FatFsDriver {
 private:
 	FATFS fs;
 	bool _attached;
+	BYTE _driveNumber;
 	friend class FatFs;
 protected:
-	FatFsDriver() : _attached(false) {}
+	FatFsDriver() : _attached(false), _driveNumber(DRIVE_NOT_ATTACHED) {}
 public:
-	virtual ~FatFsDriver() {}
+	virtual ~FatFsDriver();
 	virtual DSTATUS initialize() = 0;
 	virtual DSTATUS status() = 0;
 	virtual DRESULT read(BYTE* buff, DWORD sector, UINT count) = 0;
 	virtual DRESULT write(const BYTE* buff, DWORD sector, UINT count) = 0;
 	virtual DRESULT ioctl(BYTE cmd, void* buff) = 0;
+	BYTE driveNumber() { return _attached ? _driveNumber : DRIVE_NOT_ATTACHED; }
 };
 
 extern const char* FR_strings[];
@@ -73,6 +79,8 @@ public:
 	static void detach(BYTE driveNumber);
 	static const char* fileResultMessage(FRESULT fileResult) { return FR_string(fileResult); }
 };
+
+#include "FatFs-SD.h"
 
 #endif /* FATFS_PARTICLE_H_ */
 
