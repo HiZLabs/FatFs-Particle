@@ -1,6 +1,6 @@
 {
     "name": "FatFs",
-    "version": "0.0.3",
+    "version": "0.1.0",
     "author": "Aaron Heise <aaron@hizlabs.com>",
     "license": "MIT",
     "description": "FatFs library by ChaN plus C++ wrapper, for Particle devices" 
