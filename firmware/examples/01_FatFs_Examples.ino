@@ -21,6 +21,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+ 
+ /* ** ABOUT THIS EXAMPLE **
+  * This example demos setting up the SD card driver and performing some file actions.
+  * At the time of publishing it was tested on Photon and Core.
+  *
+  * The hardware setup is some sort of SD card breakout, possibly including a card detect
+  * line, connected to A2-A5 and D0:
+  * A2: CS
+  * A3: SCLK
+  * A4: MISO (SD card DO) * Requires pullup resistor * (4.7K used for testing)
+  * A5: MOSI (SD card DI)
+  * D0: Card detect (example assumes active high and activates internal pullup)
+  *
+  * On threading platforms, an activity indicator timer is activated that takes over the
+  * RGB LED to use to indicate disk activity.
+  *
+  * ** WHAT THE EXAMPLE DOES **
+  * 1. Setup and attach driver
+  * 2. Traverse the directory structure and print info about all of the files on the disk
+  * 3. Print overall disk usage info
+  * 4. File update loop
+  *    a) open a test file in read/write mode
+  *    b) read in the first line
+  *    c) format the data as a number and increment it
+  *    d) write the number back out to the file and close it
+  *    e) print out the number and file info
+  *    When working properly, the file loop should result in a number that keeps counting up
+  *
+  * Put some files on the SD card before running the program, and you'll know it's working when
+  * the device prints the details of the file.
+  *
+  * ** NOTES **
+  * - Output is printed to the USB serial interface
+  * - Only FAT32 volumes are supported...maybe FAT16...definitely not exFAT.
+  * - Long filename info is ignored
+  * - Performance on the Core is hindered by DMA issues currently.
+  * - Multiple threads can use the filesystem simultaneously on threaded platforms.
+  * - Documentation on the driver and wrapper API (creating and interacting with drivers) is in
+  *    the README.md in the library repo. Documentation for the FatFs API (for interacting with
+  *    files) is available on the FatFs website.
+  *   	- https://github.com/HiZLabs/FatFs-Particle/
+  *     - http://elm-chan.org/fsw/ff/00index_e.html
+  *
+  * Please post any issues on the FatFs-Particle GitHub issue tracker.
+  */
 
 //Declare an instance of the SD card driver
 FatFsSD SD0;
@@ -127,7 +172,7 @@ void print_file_info(const char* path, const FILINFO& fileInfo, Print& print) {
     Serial.printf("  %u/%02u/%02u  %02u:%02u",
            (fileInfo.fdate >> 9) + 1980, fileInfo.fdate >> 5 & 15, fileInfo.fdate & 31,
            fileInfo.ftime >> 11, fileInfo.ftime >> 5 & 63);
-    Serial.printf(isDir ? "        " : "  %s  ", isDir ? 0 : bytesToPretty(fileInfo.fsize).c_str());
+    Serial.printf(isDir ? "  <DIR>  " : "   %s  ", isDir ? 0 : bytesToPretty(fileInfo.fsize).c_str());
     Serial.println(path);
 }
 
