@@ -92,25 +92,46 @@ private:
 	)
 	{
 #if PLATFORM_THREADING
+ #ifdef SYSTEM_VERSION_060
+		//use a queue to signal because the firmware implementation at the time of writing
+		//checks to use the ISR version of put when appropriate
 		os_queue_t signal;
 		os_queue_create(&signal, sizeof(void*), 1, nullptr);
 		void* result;
+ #else
+		std::mutex signal;
+ #endif
 #else
 		volatile bool complete = false;
 #endif
 		/* Write multiple bytes */
 		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
+#if PLATFORM_THREADING
+ #ifndef SYSTEM_VERSION_060
+			signal.lock();
+ #endif
+#endif
 			_spi->transfer((BYTE*)buff, nullptr, btx, callback);
 #if PLATFORM_THREADING
+#ifdef SYSTEM_VERSION_060
 			os_queue_take(signal, &result, CONCURRENT_WAIT_FOREVER, nullptr);
 			os_queue_destroy(signal, nullptr);
 			signal = nullptr;
+#else
+			signal.lock();
+			signal.unlock(); //superfluous, but...but...
+#endif
+
 #else
 			while(!complete);
 #endif
 		}, [&]() {
 #if PLATFORM_THREADING
+ #ifdef SYSTEM_VERSION_060
 			os_queue_put(signal, result, 0, nullptr);
+ #else
+			signal.unlock();
+ #endif
 #else
 			complete = true;
 #endif
