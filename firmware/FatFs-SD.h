@@ -13,9 +13,6 @@
 #include "trampoline.h"
 #include <mutex>
 
-#undef LOG
-#define LOG(x, y, ...) Serial.printlnf(y, ##__VA_ARGS__)
-
 /* MMC/SD command */
 #define CMD0	(0)			/* GO_IDLE_STATE */
 #define CMD1	(1)			/* SEND_OP_COND (MMC) */
@@ -131,7 +128,7 @@ private:
 #else
 		//DMA not working on core
 		for(size_t i = 0; i < btx; i++)
-			_spi->transfer(buff[i]);
+			_spi->transfer((BYTE)buff[i]);
 #endif
 	}
 
