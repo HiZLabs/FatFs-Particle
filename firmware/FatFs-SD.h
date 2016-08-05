@@ -130,7 +130,8 @@ private:
 		});
 #else
 		//DMA not working on core
-		_spi->transfer((BYTE*)buff, nullptr, btx, nullptr);
+		for(size_t i = 0; i < btx; i++)
+			_spi->transfer(buff[i]);
 #endif
 	}
 
@@ -177,9 +178,8 @@ private:
 		});
 #else
 		//DMA not working on core
-		char bytes[512];
-		memset(bytes, 0xff, 512);
-		_spi->transfer(bytes, buff, btr, nullptr);
+		for(size_t i = 0; i < btr; i++)
+			buff[i] = _spi->transfer(0xff);
 #endif
 	}
 
