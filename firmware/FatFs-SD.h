@@ -11,6 +11,7 @@
 
 #include <FatFs/FatFs.h>
 #include "trampoline.h"
+#include <mutex>
 
 /* MMC/SD command */
 #define CMD0	(0)			/* GO_IDLE_STATE */
