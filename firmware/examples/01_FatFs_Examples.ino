@@ -27,7 +27,7 @@ FatFsSD SD0;
 
 //If building for a platform with threads, set up disk activity timer
 //Takes over RGB LED as and blinks to indicate disk activity
-#if PLATFORM_THREADED
+#if PLATFORM_THREADING
 Timer diskActivityIndicatorTimer(1, updateDiskActivityIndicator);
 #endif
 
@@ -55,7 +55,7 @@ void setup() {
         Serial.printlnf("SD drive mounted %s", FatFs::fileResultMessage(result));
     
         //if building on a threaded platform, take over LED and start the activity timer
-#if PLATFORM_THREADED
+#if PLATFORM_THREADING
         RGB.control(true);
         diskActivityIndicatorTimer.start();
 #endif
