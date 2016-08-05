@@ -88,7 +88,7 @@ private:
 		_spi->setDataMode(SPI_MODE0);
 		_spi->setBitOrder(MSBFIRST);
 	}
-#define PLATFORM_THREADING 1
+
 	/* Send multiple byte */
 	void xmit_spi_multi (
 		const BYTE *buff,	/* Pointer to the data */
