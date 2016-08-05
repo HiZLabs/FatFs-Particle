@@ -48,7 +48,7 @@ After attaching the drive, you will use the FatFs API to use the drive. For refe
 
 The drive is attached using the drive number you supply. In the example code, the SD card is attached on drive number 0, so the file `\test.txt` on the SD card would be accessed at the path `0:/test.txt`.
 
-The included example program demonstrates performing several file operations including reading and writing files, getting file info such as size and attributes, and traversal of the directory structure.
+The included example program ([01_FatFs_Examples.ino]https://github.com/HiZLabs/FatFs-Particle/tree/master/firmware/examples/01_FatFs_Examples.ino) demonstrates performing several file operations including reading and writing files, getting file info such as size and attributes, and traversal of the directory structure. Setup info and sample output is in the code file.
 
 API Reference
 =============
