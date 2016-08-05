@@ -13,6 +13,9 @@
 #include "trampoline.h"
 #include <mutex>
 
+#undef LOG
+#define LOG(x, y, ...) Serial.printlnf(y, ##__VA_ARGS__)
+
 /* MMC/SD command */
 #define CMD0	(0)			/* GO_IDLE_STATE */
 #define CMD1	(1)			/* SEND_OP_COND (MMC) */
@@ -85,7 +88,7 @@ private:
 		_spi->setDataMode(SPI_MODE0);
 		_spi->setBitOrder(MSBFIRST);
 	}
-
+#define PLATFORM_THREADING 1
 	/* Send multiple byte */
 	void xmit_spi_multi (
 		const BYTE *buff,	/* Pointer to the data */
