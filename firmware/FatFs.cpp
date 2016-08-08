@@ -19,7 +19,7 @@
 
 #include "FatFs.h"
 
-LOG_SOURCE_CATEGORY("fatfs_particle.diskio");
+LOG_SOURCE_CATEGORY("fatfs.diskio");
 
 extern "C" DSTATUS disk_initialize(BYTE pdrv)
 {

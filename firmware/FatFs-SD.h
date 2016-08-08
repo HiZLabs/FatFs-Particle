@@ -35,6 +35,9 @@
 #define CMD55	(55)		/* APP_CMD */
 #define CMD58	(58)		/* READ_OCR */
 
+extern "C" void __ff_spi_send_dma(SPIClass& spi, const BYTE* buff, const UINT btx);
+extern "C" void __ff_spi_receive_dma(SPIClass& spi, BYTE* buff, const UINT btr, const BYTE sendByte);
+
 #ifndef HOSS_TIMEOUT_CHECKER
 #define HOSS_TIMEOUT_CHECKER
 class TimeoutChecker {
@@ -48,17 +51,17 @@ public:
 };
 #endif
 
-template<typename Pin>
+template<typename PinType>
 class SDSPIDriver : public FatFsDriver
 {
-	LOG_CATEGORY("fatfs_particle.sdspidriver");
+	LOG_CATEGORY("fatfs.sdspidriver");
 private:
 	SPIClass* _spi;
 	uint16_t _cs;
-	Pin _cd;
+	PinType _cd;
 	bool _cd_enabled;
 	uint8_t _cd_active_state;
-	Pin _wp;
+	PinType _wp;
 	bool _wp_enabled;
 	uint8_t _wp_active_state;
 	volatile uint32_t _high_speed_clock;
@@ -92,44 +95,7 @@ private:
 		UINT btx			/* Number of bytes to send (even number) */
 	)
 	{
-#if PLATFORM_THREADING
- #ifdef SYSTEM_VERSION_060
-		//use a queue to signal because the firmware implementation at the time of writing
-		//checks to use the ISR version of put when appropriate
-		os_queue_t signal;
-		os_queue_create(&signal, sizeof(void*), 1, nullptr);
-		void* result;
- #else
-		std::mutex signal;
- #endif
-
-		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
-
- #ifndef SYSTEM_VERSION_060
-			signal.lock();
- #endif
-			_spi->transfer((BYTE*)buff, nullptr, btx, callback);
-
- #ifdef SYSTEM_VERSION_060
-			os_queue_take(signal, &result, CONCURRENT_WAIT_FOREVER, nullptr);
-			os_queue_destroy(signal, nullptr);
-			signal = nullptr;
- #else
-			signal.lock();
-			signal.unlock(); //superfluous, but...but...
- #endif
-		}, [&]() {
- #ifdef SYSTEM_VERSION_060
-			os_queue_put(signal, result, 0, nullptr);
- #else
-			signal.unlock();
- #endif
-		});
-#else
-		//DMA not working on core
-		for(size_t i = 0; i < btx; i++)
-			_spi->transfer((BYTE)buff[i]);
-#endif
+		__ff_spi_send_dma(*_spi, buff, btx);
 	}
 
 	void rcvr_spi_multi (
@@ -137,47 +103,7 @@ private:
 		UINT btr		/* Number of bytes to receive (even number) */
 	)
 	{
-		/* Read multiple bytes, send 0xFF as dummy */
-		memset(buff, 0xff, btr);
-
-#if PLATFORM_THREADING
- #ifdef SYSTEM_VERSION_060
-		//use a queue to signal because the firmware implementation at the time of writing
-		//checks to use the ISR version of put when appropriate
-		os_queue_t signal;
-		os_queue_create(&signal, sizeof(void*), 1, nullptr);
-		void* result;
- #else
-		std::mutex signal;
- #endif
-
-		invoke_trampoline([&](HAL_SPI_DMA_UserCallback callback){
-
- #ifndef SYSTEM_VERSION_060
-			signal.lock();
- #endif
-			_spi->transfer(buff, buff, btr, callback);
-
- #ifdef SYSTEM_VERSION_060
-			os_queue_take(signal, &result, CONCURRENT_WAIT_FOREVER, nullptr);
-			os_queue_destroy(signal, nullptr);
-			signal = nullptr;
- #else
-			signal.lock();
-			signal.unlock(); //superfluous, but...but...
- #endif
-		}, [&]() {
- #ifdef SYSTEM_VERSION_060
-			os_queue_put(signal, result, 0, nullptr);
- #else
-			signal.unlock();
- #endif
-		});
-#else
-		//DMA not working on core
-		for(size_t i = 0; i < btr; i++)
-			buff[i] = _spi->transfer(0xff);
-#endif
+		__ff_spi_receive_dma(*_spi, buff, btr, 0xff);
 	}
 
 	BYTE send_cmd (		/* Return value: R1 resp (bit7==1:Failed to send) */
@@ -333,21 +259,27 @@ private:
 		if(_mutex != nullptr)
 			_mutex->lock();
 #endif
-		_busy = true;
-		_busy_check = true;
+		ATOMIC_BLOCK()
+		{
+			_busy = true;
+			_busy_check = true;
+		}
 		setSPI();
 	}
 
 	void unlock()
 	{
-		_busy = false;
+		ATOMIC_BLOCK()
+		{
+			_busy = false;
+		}
 #if PLATFORM_THREADING
 		if(_mutex != nullptr)
 			_mutex->unlock();
 #endif
 	}
 
-	friend class std::lock_guard<SDSPIDriver<Pin>>;
+	friend class std::lock_guard<SDSPIDriver<PinType>>;
 public:
 	SDSPIDriver() : FatFsDriver(),
 		_spi(nullptr),
@@ -389,7 +321,7 @@ public:
 
 	virtual DSTATUS initialize() {
 		UINT n, cmd, ty, ocr[4];
-		std::lock_guard<SDSPIDriver<Pin>> lck(*this);
+		std::lock_guard<SDSPIDriver<PinType>> lck(*this);
 
 		activateLowSpeed();
 
@@ -490,7 +422,7 @@ public:
 
 	virtual DRESULT read(BYTE* buff, DWORD sector, UINT count) {
 		UINT read = 0;
-		std::lock_guard<SDSPIDriver<Pin>> lck(*this);
+		std::lock_guard<SDSPIDriver<PinType>> lck(*this);
 
 //		LOG(TRACE, "disk_read: inside");
 		if (!cardPresent() || (_status & STA_NOINIT))
@@ -517,7 +449,7 @@ public:
 
 	virtual DRESULT write(const BYTE* buff, DWORD sector, UINT count)
 	{
-		std::lock_guard<SDSPIDriver<Pin>> lck(*this);
+		std::lock_guard<SDSPIDriver<PinType>> lck(*this);
 
 //		LOG(TRACE, "disk_write: inside");
 		if (!cardPresent())
@@ -559,7 +491,7 @@ public:
 
 	virtual DRESULT ioctl(BYTE cmd, void* buff)
 	{
-		std::lock_guard<SDSPIDriver<Pin>> lck(*this);
+		std::lock_guard<SDSPIDriver<PinType>> lck(*this);
 
 		DRESULT res;
 		BYTE n, csd[16];
@@ -646,8 +578,8 @@ public:
 	void lowSpeedClock(uint32_t clock) { _low_speed_clock = clock; }
 	uint32_t activeClock() { return _active_clock; }
 
-	void enableCardDetect(const Pin& cdPin, bool activeState) { _cd = cdPin; _cd_active_state = activeState; _cd_enabled = true; }
-	void enableWriteProtectDetect(const Pin& wpPin, bool activeState) { _wp = wpPin; _wp_active_state = activeState; _wp_enabled = true; }
+	void enableCardDetect(const PinType cdPin, bool activeState) { _cd = cdPin; _cd_active_state = activeState; _cd_enabled = true; }
+	void enableWriteProtectDetect(const PinType wpPin, bool activeState) { _wp = wpPin; _wp_active_state = activeState; _wp_enabled = true; }
 
 	bool wasBusySinceLastCheck() {
 		bool wasBusy;

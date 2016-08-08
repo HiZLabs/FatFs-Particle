@@ -19,10 +19,10 @@
 #ifndef FATFS_PARTICLE_H_
 #define FATFS_PARTICLE_H_
 
+#include "application.h"
 #include "ff.h"
 #include <vector>
 #include <memory>
-#include "application.h"
 
 #ifndef LOG_SOURCE_CATEGORY
 #define LOG_SOURCE_CATEGORY(x)
