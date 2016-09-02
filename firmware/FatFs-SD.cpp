@@ -13,7 +13,7 @@ extern "C" void __ff_spi_send_dma(SPIClass& spi, const BYTE* buff, const UINT bt
 		//use a queue to signal because the firmware implementation at the time of writing
 		//checks to use the ISR version of put when appropriate
 		os_queue_t signal;
-		os_queue_create(&signal, sizeof(void*), 1, nullptr);
+		os_queue_create(&signal, 0, 1, nullptr);
 		void* result;
  #else
 		std::mutex signal;
@@ -27,7 +27,7 @@ extern "C" void __ff_spi_send_dma(SPIClass& spi, const BYTE* buff, const UINT bt
 			spi.transfer((BYTE*)buff, nullptr, btx, callback);
 
  #ifdef SYSTEM_VERSION_060
-			os_queue_take(signal, &result, CONCURRENT_WAIT_FOREVER, nullptr);
+			os_queue_take(signal, nullptr, CONCURRENT_WAIT_FOREVER, nullptr);
 			os_queue_destroy(signal, nullptr);
 			signal = nullptr;
  #else
@@ -36,7 +36,7 @@ extern "C" void __ff_spi_send_dma(SPIClass& spi, const BYTE* buff, const UINT bt
  #endif
 		}, [&]() {
  #ifdef SYSTEM_VERSION_060
-			os_queue_put(signal, result, 0, nullptr);
+			os_queue_put(signal, nullptr, 0, nullptr);
  #else
 			signal.unlock();
  #endif
@@ -58,7 +58,7 @@ extern "C" void __ff_spi_receive_dma(SPIClass& spi, BYTE* buff, const UINT btr, 
 	//use a queue to signal because the firmware implementation at the time of writing
 	//checks to use the ISR version of put when appropriate
 	os_queue_t signal;
-	os_queue_create(&signal, sizeof(void*), 1, nullptr);
+	os_queue_create(&signal, 0, 1, nullptr);
 	void* result;
 #else
 	std::mutex signal;
@@ -72,7 +72,7 @@ extern "C" void __ff_spi_receive_dma(SPIClass& spi, BYTE* buff, const UINT btr, 
 		spi.transfer(buff, buff, btr, callback);
 
 #ifdef SYSTEM_VERSION_060
-		os_queue_take(signal, &result, CONCURRENT_WAIT_FOREVER, nullptr);
+		os_queue_take(signal, nullptr, CONCURRENT_WAIT_FOREVER, nullptr);
 		os_queue_destroy(signal, nullptr);
 		signal = nullptr;
 #else
@@ -81,7 +81,7 @@ extern "C" void __ff_spi_receive_dma(SPIClass& spi, BYTE* buff, const UINT btr, 
 #endif
 	}, [&]() {
 #ifdef SYSTEM_VERSION_060
-		os_queue_put(signal, result, 0, nullptr);
+		os_queue_put(signal, nullptr, 0, nullptr);
 #else
 		signal.unlock();
 #endif

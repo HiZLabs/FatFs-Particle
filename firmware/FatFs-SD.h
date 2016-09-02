@@ -441,7 +441,13 @@ public:
 					LOG(ERROR, "SD: Read failed for sector %d", sector);
 			}
 			else
-				LOG(ERROR, "SD: CMD17 not accepted");
+			{
+				LOG(ERROR, "SD: CMD17 not accepted, re-init");
+				deselect();
+				this->unlock();
+				initialize();
+				this->lock();
+			}
 		}
 		deselect();
 		return count ? RES_ERROR : RES_OK;		/* Return result */
