@@ -192,10 +192,15 @@ extern "C" FRESULT f_copy(const char* src, const char* dst)
 
 extern "C" FRESULT f_getline(FIL* fp, TCHAR* buf, int len)
 {
+	buf[0] = 0;
 	FSIZE_t startPos = f_tell(fp);
-	FRESULT result = f_gets(buf, len, fp);
+	UINT br;
+	FRESULT result = f_read(fp, buf, len, &br);
+	buf[len - 1] = 0;
 	if(result != FR_OK)
 		return result;
+	if(br == 0)
+		return FR_INVALID_OBJECT;
 	int i = 0;
 	for(; i < len; i++)
 	{
