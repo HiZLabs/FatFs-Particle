@@ -151,3 +151,69 @@ extern "C" BYTE __get_system_is_threaded() {
     return system_thread_get_state(NULL) != spark::feature::DISABLED &&
       (system_mode()!=SAFE_MODE);
 }
+
+extern "C" FRESULT f_copy(const char* src, const char* dst)
+{
+	FIL srcf;
+	FIL dstf;
+
+	FRESULT result = f_open(&srcf, src, FA_READ | FA_OPEN_EXISTING);
+	if(result != FR_OK)
+		return result;
+
+	result = f_open(&dstf, dst, FA_WRITE | FA_OPEN_ALWAYS);
+	if(result != FR_OK)
+	{
+		f_close(&srcf);
+		return result;
+	}
+
+	size_t srcBlockSize = disk_ioctl(srcf.obj.fs->drv, GET_BLOCK_SIZE, nullptr);
+	size_t dstBlockSize = disk_ioctl(dstf.obj.fs->drv, GET_BLOCK_SIZE, nullptr);
+	size_t blockSize = min(srcBlockSize, dstBlockSize);
+	uint8_t buf[blockSize];
+	UINT br = 0;
+	UINT bw = 0;
+	FSIZE_t size = f_size(&srcf);
+
+	for(FSIZE_t totalRead = 0; result == FR_OK && totalRead < size; totalRead += br)
+	{
+		result = f_read(&srcf, buf, blockSize, &br);
+		if(result != FR_OK)
+			break;
+		result = f_write(&dstf, buf, br, &bw);
+	}
+
+	f_close(&srcf);
+	f_close(&dstf);
+
+	return result;
+}
+
+extern "C" FRESULT f_getline(FIL* fp, TCHAR* buf, int len)
+{
+	FSIZE_t startPos = f_tell(fp);
+	FRESULT result = f_gets(buf, len, fp);
+	if(result != FR_OK)
+		return result;
+	int i = 0;
+	for(; i < len; i++)
+	{
+		if(buf[i] == '\n')
+		{
+			//set the end of the string at before the endl (check for DOS line endings)
+			if(i > 0 && buf[i-1] == '\r')
+				buf[i-1] = 0;
+			else
+				buf[i] = 0;
+			break;
+		}
+	}
+
+	if(i >= len)
+		return FR_INVALID_PARAMETER; //should we seek back in this case?
+
+	//reposition pointer to position after endl
+	result = f_lseek(fp, startPos + i + 1);
+	return result;
+}

@@ -78,7 +78,11 @@ public:
 	static FRESULT attach(FatFsDriver& driver, BYTE driveNumber);
 	static void detach(BYTE driveNumber);
 	static const char* fileResultMessage(FRESULT fileResult) { return FR_string(fileResult); }
+	static FatFsDriver* driver(BYTE pdrv) { return _drivers[pdrv]; }
 };
+
+extern "C" FRESULT f_copy(const char* src, const char* dst);
+extern "C" FRESULT f_getline(FIL* fp, TCHAR* buf, int len);
 
 #include "FatFs-SD.h"
 
