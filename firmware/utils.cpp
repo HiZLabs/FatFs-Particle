@@ -30,6 +30,15 @@ FRESULT print_file_info(const char* path, Print& print) {
 //Recursive directory list, adapted from FatFs documentation (http://elm-chan.org/fsw/ff/en/readdir.html)
 FRESULT scan_files (String path, Print& print)
 {
+    return scan_files(path, [&print](String& filePath, FILINFO& fno) -> bool
+	{
+		print_file_info(filePath, print);
+		return true;
+	});
+}
+
+FRESULT scan_files(String path, std::function<bool(String&, FILINFO&)> cb)
+{
     FRESULT res;
     DIR dir;
     static FILINFO fno;
@@ -40,12 +49,15 @@ FRESULT scan_files (String path, Print& print)
             res = f_readdir(&dir, &fno);                    /* Read a directory item */
             if (res != FR_OK || fno.fname[0] == 0) break;   /* Break on error or end of dir */
             String nextPath = path + "/" + fno.fname;
-            print_file_info(nextPath, fno, print);
+            bool result = cb(nextPath, fno);
             if (fno.fattrib & AM_DIR) {                     /* It is a directory */
-
-                res = scan_files(nextPath, print);          /* Enter the directory */
-                if (res != FR_OK) break;
-            }
+            	if(result)
+            	{
+					res = scan_files(nextPath, cb);          /* Enter the directory */
+					if (res != FR_OK) break;
+            	}
+            } else if(!result)
+            	break;
         }
         f_closedir(&dir);
     }
