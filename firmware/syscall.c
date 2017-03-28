@@ -27,8 +27,9 @@ int ff_cre_syncobj (	/* !=0:Function succeeded, ==0:Could not create due to any 
 )
 {
 //	LOG(TRACE, "create FatFs mutex (drive %d)", vol);
+	*sobj = NULL;
 	os_mutex_create(sobj);
-	return sobj != NULL;
+	return *sobj != NULL;
 }
 
 
@@ -52,7 +53,7 @@ int ff_del_syncobj (	/* !=0:Function succeeded, ==0:Could not delete due to any 
 }
 
 static int pollWaitForLock(_SYNC_t sobj) {
-	system_tick_t ticks = SYSTEM_TICK_COUNTER;
+	system_tick_t ticks = GetSystem1MsTick();
 	system_tick_t timeout = ticks + _FS_TIMEOUT;
 	while((ticks < timeout || _FS_TIMEOUT == CONCURRENT_WAIT_FOREVER))
 	{

@@ -65,8 +65,7 @@ FRESULT scan_files(String path, std::function<bool(String&, FILINFO&)> cb)
     return res;
 }
 
-//Print free space, adapted from FatFs documentation (http://elm-chan.org/fsw/ff/en/getfree.html)
-FRESULT print_free_space(uint8_t driveNumber, Print& print) {
+FRESULT f_getfree_out(uint8_t driveNumber, uint64_t* bytesFreeOut, uint64_t* bytesUsedOut, uint64_t* bytesTotalOut) {
     FATFS *fs;
     DWORD fre_clust, fre_sect, tot_sect;
 
@@ -77,8 +76,6 @@ FRESULT print_free_space(uint8_t driveNumber, Print& print) {
 
     /* Get volume information and free clusters of drive 0 */
     FRESULT res = f_getfree(path, &fre_clust, &fs);
-    if (res)
-        print.printlnf("Failed to get free space %s", FatFs::fileResultMessage(res));
 
     /* Get total sectors and free sectors */
     tot_sect = (fs->n_fatent - 2) * fs->csize;
@@ -88,17 +85,42 @@ FRESULT print_free_space(uint8_t driveNumber, Print& print) {
     uint64_t freeBytes = fre_sect * 512ll;
     uint64_t usedBytes = totalBytes - freeBytes;
 
+    if(bytesFreeOut)
+    	*bytesFreeOut = freeBytes;
+
+    if(bytesUsedOut)
+    	*bytesUsedOut = usedBytes;
+
+    if(bytesTotalOut)
+    	*bytesTotalOut = totalBytes;
+
+    return res;
+}
+
+//Print free space, adapted from FatFs documentation (http://elm-chan.org/fsw/ff/en/getfree.html)
+FRESULT print_free_space(uint8_t driveNumber, Print& print) {
+    uint64_t totalBytes;
+    uint64_t freeBytes;
+    uint64_t usedBytes;
+
+    FRESULT result = f_getfree_out(driveNumber, &freeBytes, &usedBytes, &totalBytes);
+
+    if(result)
+    	return result;
+
     String prettyTotal = bytesToPretty(totalBytes);
     String prettyFree = bytesToPretty(freeBytes);
     String prettyUsed = bytesToPretty(usedBytes);
 
-    print.printlnf("Disk %c usage", path[0]);
+    print.printlnf("Disk %d usage", driveNumber);
     print.printlnf("%s used (%3.1f%%)", prettyUsed.c_str(), (double)usedBytes/(double)totalBytes * 100.0);
     print.printlnf("%s free (%3.1f%%)", prettyFree.c_str(), (double)freeBytes/(double)totalBytes * 100.0);
     print.printlnf("%s total\n", prettyTotal.c_str());
 
-    return res;
+    return result;
 }
+
+
 
 static const char prefixes[] = { 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' };
 
@@ -122,4 +144,176 @@ String bytesToPretty(uint64_t bytes) {
     else
         snprintf(buf, 15, "%3.1f%c", value, prefixes[oom-1]);
     return String(buf);
+}
+
+FRESULT f_append_string(String& path, String& str)
+{
+	FIL fil;
+	FRESULT result = f_open(&fil, path.c_str(), FA_OPEN_APPEND | FA_WRITE);
+	if(result != FR_OK)
+		return result;
+	UINT bw;
+	result = f_write(&fil, str.c_str(), str.length(), &bw);
+	f_close(&fil);
+	return result;
+}
+
+FRESULT FileLogHandler::setFilename(String filename)
+{
+	std::lock_guard<std::recursive_mutex> lg(_mutex);
+	_filename = "";
+	FIL fil;
+	FRESULT result = f_open(&fil, filename.c_str(), FA_OPEN_APPEND | FA_WRITE);
+	if(result != FR_OK)
+		return result;
+
+	result = f_close(&fil);
+	if(result == FR_OK)
+		_filename = filename;
+
+	return result;
+}
+
+void FileLogHandler::setFormatMessageCallback(std::function<String(const char *, LogLevel, const char*, const LogAttributes)> formatMessageCallback)
+{
+	std::lock_guard<std::recursive_mutex> lg(_mutex);
+	_formatMessageCallback = formatMessageCallback;
+}
+
+void FileLogHandler::setErrorCallback(std::function<bool(FRESULT)> errorCallback)
+{
+	std::lock_guard<std::recursive_mutex> lg(_mutex);
+	_errorCallback = errorCallback;
+}
+
+FileLogHandler::FileLogHandler(LogLevel level, const LogCategoryFilters &filters) : LogHandler(level, filters)
+{
+	LogManager::instance()->addHandler(this);
+}
+
+static const char* extractFileName(const char *s) {
+    const char *s1 = strrchr(s, '/');
+    if (s1) {
+        return s1 + 1;
+    }
+    return s;
+}
+
+static const char* extractFuncName(const char *s, size_t *size) {
+    const char *s1 = s;
+    for (; *s; ++s) {
+        if (*s == ' ') {
+            s1 = s + 1; // Skip return type
+        } else if (*s == '(') {
+            break; // Skip argument types
+        }
+    }
+    *size = s - s1;
+    return s1;
+}
+
+void formatLogMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr, String& outStr)
+{
+	const char *s = nullptr;
+	    // Timestamp
+	    if (attr.has_time) {
+	        outStr += String::format("%010u ", (unsigned)attr.time);
+	    }
+	    // Category
+	    if (category) {
+	        outStr += '[';
+	        outStr += category;
+	        outStr += "] ";
+	    }
+	    // Source file
+	    if (attr.has_file) {
+	        s = extractFileName(attr.file); // Strip directory path
+	        outStr += s; // File name
+	        if (attr.has_line) {
+	            outStr += ':';
+	            outStr += String::format("%d", (int)attr.line); // Line number
+	        }
+	        if (attr.has_function) {
+	            outStr += ", ";
+	        } else {
+	            outStr += ": ";
+	        }
+	    }
+	    // Function name
+	    if (attr.has_function) {
+	        size_t n = 0;
+	        s = extractFuncName(attr.function, &n); // Strip argument and return types
+	        outStr += String(s, n);
+	        outStr += "(): ";
+	    }
+	    // Level
+	    s = LogHandler::levelName(level);
+	    outStr += s;
+	    outStr += ": ";
+	    // Message
+	    if (msg) {
+	        outStr += msg;
+	    }
+	    // Additional attributes
+	    if (attr.has_code || attr.has_details) {
+	        outStr += " [";
+	        // Code
+	        if (attr.has_code) {
+	            outStr += "code = ";
+	            outStr += String::format("%" PRIiPTR, (intptr_t)attr.code);
+	        }
+	        // Details
+	        if (attr.has_details) {
+	            if (attr.has_code) {
+	                outStr += ", ";
+	            }
+	            outStr += "details = ";
+	            outStr += attr.details;
+	        }
+	        outStr += ']';
+	    }
+	    outStr += "\r\n";
+}
+
+void FileLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr)
+{
+	std::lock_guard<std::recursive_mutex> lg(_mutex);
+	if(_filename.length() == 0)
+		return;
+
+	String str;
+	if(_formatMessageCallback)
+		str = _formatMessageCallback(msg, level, category, attr);
+	else
+	{
+		formatLogMessage(msg, level, category, attr, str);
+	}
+
+	write(str.c_str(), str.length());
+}
+
+void FileLogHandler::write(const char *data, size_t size)
+{
+	std::lock_guard<std::recursive_mutex> lg(_mutex);
+	if(_filename.length() == 0)
+		return;
+
+	bool repeat = false;
+	do
+	{
+		repeat = false;
+		String s(data, size);
+		FRESULT result = f_append_string(_filename, s);
+		Serial.printf("Logging to %s: %s", _filename.c_str(), s.c_str());
+		if(result != FR_OK)
+		{
+			if(_errorCallback && _errorCallback(result))
+			{
+				repeat = true;
+			}
+			else
+				break;
+		}
+	} while(repeat);
+
 }
