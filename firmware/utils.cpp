@@ -22,7 +22,7 @@ FRESULT print_file_info(const char* path, Print& print) {
     {
         print_file_info(path, fileInfo, print);
     } else {
-                Serial.printlnf("%s %s", path, FatFs::fileResultMessage(result));
+                print.printlnf("%s %s", path, FatFs::fileResultMessage(result));
     }
     return result;
 }
