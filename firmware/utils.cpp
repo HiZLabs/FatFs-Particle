@@ -54,7 +54,7 @@ FRESULT scan_files(String path, std::function<bool(String&, FILINFO&)> cb)
             	if(result)
             	{
 					res = scan_files(nextPath, cb);          /* Enter the directory */
-					if (res != FR_OK) break;
+					if (!(res == FR_OK || FR_INVALID_NAME)) break;
             	}
             } else if(!result)
             	break;

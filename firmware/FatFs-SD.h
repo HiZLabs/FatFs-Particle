@@ -68,7 +68,7 @@ private:
 	volatile uint32_t _low_speed_clock;
 	volatile uint32_t _active_clock;
 #if PLATFORM_THREADING
-	std::mutex* _mutex;
+	std::recursive_mutex* _mutex;
 #endif
 	volatile DSTATUS _status;
 	volatile BYTE _cardType;
@@ -311,7 +311,7 @@ public:
 	}
 
 #if PLATFORM_THREADING
-	void begin(SPIClass& spi, const uint16_t cs, std::mutex& mutex)
+	void begin(SPIClass& spi, const uint16_t cs, std::recursive_mutex& mutex)
 	{
 		begin(spi, cs);
 
@@ -565,6 +565,15 @@ public:
 			if (send_cmd(CMD32, st) == 0 && send_cmd(CMD33, ed) == 0 && send_cmd(CMD38, 0) == 0 && wait_ready(30000))	/* Erase sector block */
 				res = RES_OK;	/* FatFs does not check result of this command */
 			break;
+//		case IOCTL_GET_MUTEX:
+//			if(_mutex)
+//			{
+//				*((std::recursive_mutex**)buff) = _mutex;
+//				res = RES_OK;
+//			}
+//			else
+//				res = RES_PARERR;
+//			break;
 
 		default:
 			res = RES_PARERR;

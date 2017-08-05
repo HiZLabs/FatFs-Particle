@@ -42,6 +42,8 @@ extern "C" {
 }
 
 #define DRIVE_NOT_ATTACHED 255
+#define IOCTL_GET_MUTEX 254
+
 
 class FatFs;
 

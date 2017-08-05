@@ -147,7 +147,7 @@
 / Drive/Volume Configurations
 /---------------------------------------------------------------------------*/
 
-#define _VOLUMES	4
+#define _VOLUMES	1
 /* Number of volumes (logical drives) to be used. */
 
 
@@ -243,13 +243,13 @@
 #if PLATFORM_THREADING
 #include "concurrent_import.h"
 #define _FS_REENTRANT	1
-#define	_SYNC_t			os_mutex_t
+#define	_SYNC_t			void*
 #else
 #define _FS_REENTRANT 0
 #define	_SYNC_t			void*
 #endif
 
-#define _FS_TIMEOUT		100
+#define _FS_TIMEOUT		0 //syscall layer interprets this as forever, and also lacks a decent ability for a timeed wait on a mutex.
 /* The option _FS_REENTRANT switches the re-entrancy (thread safe) of the FatFs
 /  module itself. Note that regardless of this option, file access to different
 /  volume is always re-entrant and volume control functions, f_mount(), f_mkfs()

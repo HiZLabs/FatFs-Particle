@@ -222,3 +222,53 @@ extern "C" FRESULT f_getline(FIL* fp, TCHAR* buf, int len)
 	result = f_lseek(fp, startPos + i + 1);
 	return result;
 }
+
+inline uint32_t timeBetween(uint32_t past, uint32_t future) { return past <= future ? future - past : UINT32_MAX - past + future; }
+
+struct __ff_mutexes
+{
+	std::recursive_mutex m;
+	std::recursive_mutex* mp;
+};
+
+static __ff_mutexes _mutexes[_VOLUMES];
+
+extern "C" void* __ff_create_mutex(BYTE drv)
+{
+	__ff_mutexes* m = &_mutexes[drv];
+	m->mp = nullptr;
+	FatFs::driver(0)->ioctl(drv, &m->mp);
+	return m;
+}
+
+extern "C" uint8_t  __ff_lock(void* mutex, uint32_t timeout)
+{
+	__ff_mutexes* m = (__ff_mutexes*)mutex;
+	std::recursive_mutex* mp = m->mp? m->mp : &m->m;
+	uint32_t begin = millis();
+	if(timeout == CONCURRENT_WAIT_FOREVER || timeout == 0)
+	{
+		mp->lock();
+		return true;
+	}
+
+	while(timeBetween(begin, millis()) <= timeout)
+	{
+		if(mp->try_lock())
+			return true;
+		delay(10);
+	}
+	return false;
+}
+
+extern "C" void __ff_unlock(void* mutex)
+{
+	__ff_mutexes* m = (__ff_mutexes*)mutex;
+	std::recursive_mutex* mp = m->mp? m->mp : &m->m;
+	mp->unlock();
+}
+
+extern "C" void __ff_destroy(void* m)
+{
+	((__ff_mutexes*)m)->mp = nullptr;
+}

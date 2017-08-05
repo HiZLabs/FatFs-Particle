@@ -5,9 +5,18 @@
 
 
 #include "ff.h"
-#include "hw_ticks.h"
+
 
 #if _FS_REENTRANT
+#include "hw_ticks.h"
+
+void* __ff_create_mutex(BYTE drv);
+
+uint8_t  __ff_lock(void* mutex, uint32_t timeout);
+
+void __ff_unlock(void* mutex);
+
+void __ff_destroy(void* m);
 
 //LOG_SOURCE_CATEGORY("fatfs_particle.syscall")
 
@@ -28,7 +37,8 @@ int ff_cre_syncobj (	/* !=0:Function succeeded, ==0:Could not create due to any 
 {
 //	LOG(TRACE, "create FatFs mutex (drive %d)", vol);
 	*sobj = NULL;
-	os_mutex_create(sobj);
+//	os_mutex_create(sobj);
+	*sobj = __ff_create_mutex(vol);
 	return *sobj != NULL;
 }
 
@@ -48,22 +58,9 @@ int ff_del_syncobj (	/* !=0:Function succeeded, ==0:Could not delete due to any 
 {
 //	LOG(TRACE, "destroy FatFs mutex");
 	if(sobj != NULL)
-		os_mutex_destroy(sobj);
+//		os_mutex_destroy(sobj);
+		__ff_destroy(sobj);
 	return 1;
-}
-
-static int pollWaitForLock(_SYNC_t sobj) {
-	system_tick_t ticks = GetSystem1MsTick();
-	system_tick_t timeout = ticks + _FS_TIMEOUT;
-	while((ticks < timeout || _FS_TIMEOUT == CONCURRENT_WAIT_FOREVER))
-	{
-		int result = os_mutex_trylock(sobj);
-		if(result == 0)
-			return 1;
-		delay(1);
-	}
-//	LOG(TRACE, "timeout waiting for FatFs lock");
-	return 0;
 }
 
 /*------------------------------------------------------------------------*/
@@ -77,7 +74,9 @@ int ff_req_grant (	/* 1:Got a grant to access the volume, 0:Could not get a gran
 	_SYNC_t sobj	/* Sync object to wait */
 )
 {
-	return pollWaitForLock(sobj);
+//	return pollWaitForLock(sobj);
+	return __ff_lock(sobj, _FS_TIMEOUT);
+	return 1;
 }
 
 
@@ -92,7 +91,8 @@ void ff_rel_grant (
 	_SYNC_t sobj	/* Sync object to be signaled */
 )
 {
-	os_mutex_unlock(sobj);
+//	os_mutex_unlock(sobj);
+	__ff_unlock(sobj);
 }
 
 #endif
